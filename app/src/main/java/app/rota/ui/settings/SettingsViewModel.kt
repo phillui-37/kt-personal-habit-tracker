@@ -19,14 +19,25 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 
 data class BackupUi(
     val busy: Boolean = false,
     val message: String? = null,
     val error: Boolean = false,
+)
+
+data class RoutineHabitUi(
+    val id: Long,
+    val name: String,
+    val items: List<String>,
+    val currentTitle: String?,
+    val archived: Boolean,
 )
 
 @HiltViewModel
@@ -41,8 +52,23 @@ class SettingsViewModel @Inject constructor(
     val settings: StateFlow<AppSettings> = settingsStore.settings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppSettings())
 
+    val routines: StateFlow<List<RoutineHabitUi>> = habits.observeBundles(includeArchived = true)
+        .map { bundles ->
+            bundles.map { bundle ->
+                RoutineHabitUi(
+                    id = bundle.habit.id,
+                    name = bundle.habit.name,
+                    items = bundle.routine.map { it.title },
+                    currentTitle = bundle.currentRoutine?.title,
+                    archived = bundle.habit.archived,
+                )
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     private val _backupUi = MutableStateFlow(BackupUi())
     val backupUi: StateFlow<BackupUi> = _backupUi
+    private val routineEdits = Mutex()
 
     fun setTheme(mode: ThemeMode) {
         viewModelScope.launch { settingsStore.setTheme(mode) }
@@ -80,6 +106,37 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun canExactAlarms(): Boolean = reminders.canExact()
+
+    fun addRoutineItem(habitId: Long, title: String) = editRoutine(habitId) { it + title }
+
+    fun renameRoutineItem(habitId: Long, index: Int, title: String) = editRoutine(habitId) { items ->
+        items.mapIndexed { itemIndex, current -> if (itemIndex == index) title else current }
+    }
+
+    fun deleteRoutineItem(habitId: Long, index: Int) = editRoutine(habitId) { items ->
+        items.filterIndexed { itemIndex, _ -> itemIndex != index }
+    }
+
+    fun moveRoutineItem(habitId: Long, from: Int, to: Int) = editRoutine(habitId) { items ->
+        if (from !in items.indices || to !in items.indices || from == to) {
+            items
+        } else {
+            items.toMutableList().apply { add(to, removeAt(from)) }
+        }
+    }
+
+    private fun editRoutine(habitId: Long, transform: (List<String>) -> List<String>) {
+        viewModelScope.launch {
+            routineEdits.withLock {
+                val bundle = habits.getBundle(habitId) ?: return@withLock
+                val next = transform(bundle.routine.map { it.title })
+                    .map { it.trim() }
+                    .filter { it.isNotEmpty() }
+                habits.saveHabit(bundle.habit, next)
+                widgets.refresh()
+            }
+        }
+    }
 
     private suspend fun afterRestore() {
         val bundles = habits.observeBundles(includeArchived = true).first()

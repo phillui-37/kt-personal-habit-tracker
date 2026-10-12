@@ -11,8 +11,11 @@ import app.rota.notify.ReminderScheduler
 import app.rota.widget.WidgetRefresher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -21,6 +24,7 @@ data class HabitDraft(
     val id: Long = 0,
     val name: String = "",
     val note: String = "",
+    val category: String = "",
     val type: HabitType = HabitType.CHECK,
     val target: Int = 1,
     val period: Period = Period.DAILY,
@@ -47,6 +51,14 @@ class HabitEditorViewModel @Inject constructor(
     private val habitId: Long = savedStateHandle.get<Long>("habitId") ?: 0L
     private val _draft = MutableStateFlow(HabitDraft(id = habitId))
     val draft: StateFlow<HabitDraft> = _draft.asStateFlow()
+    val categorySuggestions: StateFlow<List<String>> = habits.observeBundles(includeArchived = true)
+        .map { bundles ->
+            bundles.map { it.habit.category.trim() }
+                .filter { it.isNotEmpty() }
+                .distinctBy { it.lowercase() }
+                .sortedBy { it.lowercase() }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     init {
         if (habitId != 0L) {
@@ -57,6 +69,7 @@ class HabitEditorViewModel @Inject constructor(
                     id = h.id,
                     name = h.name,
                     note = h.note,
+                    category = h.category,
                     type = h.type,
                     target = h.target,
                     period = h.period,
@@ -91,6 +104,7 @@ class HabitEditorViewModel @Inject constructor(
             id = d.id,
             name = d.name.trim(),
             note = d.note.trim(),
+            category = d.category.trim(),
             type = d.type,
             target = d.target,
             period = d.period,

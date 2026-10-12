@@ -63,6 +63,11 @@ fun SettingsScreen(
     onRestoreWebDav: () -> Unit,
     onTestWebDav: (WebDavConfig) -> Unit,
     onBack: () -> Unit,
+    routines: List<RoutineHabitUi> = emptyList(),
+    onAddRoutineItem: (Long, String) -> Unit = { _, _ -> },
+    onRenameRoutineItem: (Long, Int, String) -> Unit = { _, _, _ -> },
+    onDeleteRoutineItem: (Long, Int) -> Unit = { _, _ -> },
+    onMoveRoutineItem: (Long, Int, Int) -> Unit = { _, _, _ -> },
 ) {
     val context = LocalContext.current
     var web by remember(settings.webDav) { mutableStateOf(settings.webDav) }
@@ -130,6 +135,14 @@ fun SettingsScreen(
             ChipRow(
                 options = ThemeMode.entries.map { it.name.lowercase().replaceFirstChar(Char::uppercase) to (settings.theme == it) },
                 onSelect = { onTheme(ThemeMode.entries[it]) },
+            )
+
+            RoutineSettingsSection(
+                routines = routines,
+                onAdd = onAddRoutineItem,
+                onRename = onRenameRoutineItem,
+                onDelete = onDeleteRoutineItem,
+                onMove = onMoveRoutineItem,
             )
 
             SectionLabel("Reminders")

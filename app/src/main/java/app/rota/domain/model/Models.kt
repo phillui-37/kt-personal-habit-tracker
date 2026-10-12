@@ -28,6 +28,7 @@ data class Habit(
     val id: Long = 0,
     val name: String,
     val note: String = "",
+    val category: String = "",
     val type: HabitType = HabitType.CHECK,
     val target: Int = 1,
     val period: Period = Period.DAILY,

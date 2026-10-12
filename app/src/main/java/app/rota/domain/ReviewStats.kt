@@ -27,6 +27,11 @@ data class ReviewEvent(
     val snoozeReason: String = "",
 )
 
+data class ReviewCategoryGroup(
+    val category: String,
+    val events: List<ReviewEvent>,
+)
+
 data class ReviewSummary(
     val range: DateRange,
     val completionRate: Float,
@@ -44,10 +49,12 @@ object ReviewStats {
         statusFilter: ReviewStatusFilter,
         periodFilter: Period?,
         habitId: Long?,
+        categoryFilter: String? = null,
     ): ReviewSummary {
         val events = bundles
             .filter { habitId == null || it.habit.id == habitId }
             .filter { periodFilter == null || it.habit.period == periodFilter }
+            .filter { categoryFilter == null || it.habit.category.trim().equals(categoryFilter.trim(), ignoreCase = true) }
             .flatMap { bundle -> eventsFor(bundle, range) }
             .sortedWith(compareByDescending<ReviewEvent> { it.date }.thenBy { it.habit.name })
 
@@ -130,6 +137,22 @@ object ReviewStats {
 
         return events
     }
+
+    fun groupedByCategory(events: List<ReviewEvent>): List<ReviewCategoryGroup> {
+        val buckets = linkedMapOf<String, MutableList<ReviewEvent>>()
+        val labels = mutableMapOf<String, String>()
+        events.forEach { event ->
+            val raw = event.habit.category.trim()
+            val key = raw.lowercase()
+            labels.putIfAbsent(key, categoryLabel(raw))
+            buckets.getOrPut(key) { mutableListOf() }.add(event)
+        }
+        return buckets.entries
+            .sortedWith(compareBy<Map.Entry<String, MutableList<ReviewEvent>>> { it.key.isEmpty() }.thenBy { it.key })
+            .map { (key, rows) -> ReviewCategoryGroup(labels.getValue(key), rows.toList()) }
+    }
+
+    fun categoryLabel(category: String): String = category.trim().ifBlank { "Uncategorized" }
 
     private fun slotTarget(habit: Habit): Int = when (habit.period) {
         Period.DAILY, Period.CUSTOM -> 1
