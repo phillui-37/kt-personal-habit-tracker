@@ -54,6 +54,22 @@ class TodayViewModel @Inject constructor(
         habits.snooze(id, choice.untilMillis(), reason)
     }
 
+    fun checkAll(ids: Set<Long>) = write {
+        ids.forEach { id ->
+            val target = habits.getBundle(id)?.habit?.target ?: return@forEach
+            habits.logValue(id, target.coerceAtLeast(1))
+        }
+    }
+
+    fun skipAll(ids: Set<Long>) = write {
+        ids.forEach { habits.skip(it) }
+    }
+
+    fun snoozeAll(ids: Set<Long>, choice: SnoozeChoice, reason: String) = write {
+        val until = choice.untilMillis()
+        ids.forEach { habits.snooze(it, until, reason) }
+    }
+
     private fun write(block: suspend () -> Unit) {
         viewModelScope.launch {
             block()

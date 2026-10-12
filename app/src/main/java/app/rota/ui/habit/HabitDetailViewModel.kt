@@ -57,7 +57,9 @@ data class HabitListUi(
 
 @HiltViewModel
 class HabitListViewModel @Inject constructor(
-    habits: HabitRepository,
+    private val habits: HabitRepository,
+    private val reminders: ReminderScheduler,
+    private val widgets: WidgetRefresher,
 ) : ViewModel() {
     private val categoryFilter = MutableStateFlow<String?>(null)
 
@@ -79,5 +81,24 @@ class HabitListViewModel @Inject constructor(
 
     fun setCategory(category: String?) {
         categoryFilter.value = category
+    }
+
+    fun deleteSelected(ids: Set<Long>) {
+        if (ids.isEmpty()) return
+        viewModelScope.launch {
+            ids.forEach { id ->
+                habits.deleteHabit(id)
+                reminders.cancel(id)
+            }
+            widgets.refresh()
+        }
+    }
+
+    fun updateCategory(ids: Set<Long>, category: String) {
+        if (ids.isEmpty()) return
+        viewModelScope.launch {
+            habits.updateCategory(ids, category)
+            widgets.refresh()
+        }
     }
 }
