@@ -39,7 +39,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import app.rota.ui.theme.RotaTheme
 import app.rota.domain.model.HabitType
 import app.rota.domain.model.Period
 import app.rota.notify.ReminderScheduler
@@ -273,4 +275,23 @@ private fun Period.label(): String = when (this) {
     Period.QUARTERLY -> "Quarter"
     Period.YEARLY -> "Year"
     Period.CUSTOM -> "Every N days"
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun HabitEditPreview() {
+    RotaTheme {
+        HabitEditScreen(
+            draft = HabitDraft(
+                name = "Strength",
+                period = Period.WEEKLY,
+                timesPerPeriod = 3,
+                routine = listOf("Core", "Legs", "Back"),
+            ),
+            onChange = {},
+            onTemplate = {},
+            onSave = { true },
+            onBack = {},
+        )
+    }
 }

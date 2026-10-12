@@ -1,7 +1,6 @@
 package app.rota.ui.settings
 
 import android.Manifest
-import android.app.AlarmManager
 import android.content.Intent
 import android.net.Uri
 import android.os.Build

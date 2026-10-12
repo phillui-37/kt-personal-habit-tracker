@@ -11,15 +11,24 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.rota.domain.ReviewEvent
 import app.rota.domain.ReviewStatusFilter
@@ -28,6 +37,10 @@ import app.rota.ui.components.ChipRow
 import app.rota.ui.components.EmptyState
 import app.rota.ui.components.QuietCard
 import app.rota.ui.components.SectionLabel
+import app.rota.ui.theme.RotaTheme
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -38,6 +51,7 @@ fun ReviewScreen(
     onStatus: (ReviewStatusFilter) -> Unit,
     onPeriod: (Period?) -> Unit,
     onHabit: (Long?) -> Unit,
+    onCustomRange: (LocalDate, LocalDate) -> Unit = { _, _ -> },
 ) {
     val summary = state.summary
     val formatter = DateTimeFormatter.ofPattern("d MMM")
@@ -55,12 +69,20 @@ fun ReviewScreen(
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
         ) {
             item {
+                val ranges = listOf("week", "month", "quarter", "year", "custom")
                 ChipRow(
-                    options = listOf("week", "month", "quarter", "year").map {
+                    options = ranges.map {
                         it.replaceFirstChar(Char::uppercase) to (state.filter.rangeKey == it)
                     },
-                    onSelect = { onRange(listOf("week", "month", "quarter", "year")[it]) },
+                    onSelect = { onRange(ranges[it]) },
                 )
+                if (state.filter.rangeKey == "custom") {
+                    CustomRangeRow(
+                        start = state.filter.customStart,
+                        end = state.filter.customEnd,
+                        onChange = onCustomRange,
+                    )
+                }
                 Spacer(Modifier.height(8.dp))
                 ChipRow(
                     options = listOf(
@@ -143,6 +165,41 @@ fun ReviewScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CustomRangeRow(
+    start: LocalDate,
+    end: LocalDate,
+    onChange: (LocalDate, LocalDate) -> Unit,
+) {
+    var picking by remember { mutableStateOf<String?>(null) }
+    val formatter = DateTimeFormatter.ofPattern("d MMM yyyy")
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        TextButton(onClick = { picking = "start" }) { Text("From ${start.format(formatter)}") }
+        TextButton(onClick = { picking = "end" }) { Text("to ${end.format(formatter)}") }
+    }
+    picking?.let { which ->
+        val initial = if (which == "start") start else end
+        val picker = rememberDatePickerState(
+            initialSelectedDateMillis = initial.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli(),
+        )
+        DatePickerDialog(
+            onDismissRequest = { picking = null },
+            confirmButton = {
+                TextButton(onClick = {
+                    val millis = picker.selectedDateMillis ?: return@TextButton
+                    val date = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
+                    if (which == "start") onChange(date, end) else onChange(start, date)
+                    picking = null
+                }) { Text("Use") }
+            },
+            dismissButton = { TextButton(onClick = { picking = null }) { Text("Cancel") } },
+        ) {
+            DatePicker(state = picker)
+        }
+    }
+}
+
 @Composable
 private fun StatCard(label: String, value: String, modifier: Modifier = Modifier) {
     QuietCard(modifier) {
@@ -175,6 +232,20 @@ private fun EventRow(event: ReviewEvent, formatter: DateTimeFormatter) {
             },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun ReviewPreview() {
+    RotaTheme {
+        ReviewScreen(
+            state = ReviewUiState(),
+            onRange = {},
+            onStatus = {},
+            onPeriod = {},
+            onHabit = {},
         )
     }
 }

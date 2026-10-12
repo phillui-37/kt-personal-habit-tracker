@@ -28,6 +28,7 @@ class TodayViewModel @Inject constructor(
     fun add(id: Long, delta: Int) = write { habits.addValue(id, delta) }
     fun log(id: Long, value: Int) = write { habits.logValue(id, value) }
     fun skip(id: Long) = write { habits.skip(id) }
+    fun note(id: Long, text: String) = write { habits.setNote(id, text) }
     fun wake(id: Long) = write { habits.clearSnooze(id) }
 
     fun snooze(id: Long, choice: SnoozeChoice, reason: String) = write {

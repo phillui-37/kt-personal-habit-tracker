@@ -122,6 +122,28 @@ class HabitRepository @Inject constructor(
         logValue(habitId, if (complete) bundle.habit.target else 0, date)
     }
 
+    suspend fun setNote(habitId: Long, note: String, date: LocalDate = LocalDate.now()) {
+        mutateProgress(habitId, date) { habit, existing, routineId, routineLabel ->
+            val change = Progress.setValue(
+                habit = habit,
+                existing = existing,
+                newValue = existing?.value ?: 0,
+                epochDay = date.toEpochDay(),
+                routineItemId = routineId,
+                routineLabel = routineLabel,
+                note = note,
+            )
+            if (existing?.status == CheckInStatus.SKIPPED) {
+                change.copy(
+                    checkIn = change.checkIn.copy(status = CheckInStatus.SKIPPED, value = 0),
+                    rotationDelta = 0,
+                )
+            } else {
+                change
+            }
+        }
+    }
+
     suspend fun skip(habitId: Long, note: String = "", date: LocalDate = LocalDate.now()) {
         mutateProgress(habitId, date) { habit, existing, routineId, routineLabel ->
             Progress.skip(habit, existing, date.toEpochDay(), routineId, routineLabel, note)

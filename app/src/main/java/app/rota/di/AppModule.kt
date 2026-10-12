@@ -18,6 +18,7 @@ object AppModule {
     @Singleton
     fun database(@ApplicationContext context: Context): RotaDatabase =
         Room.databaseBuilder(context, RotaDatabase::class.java, "rota.db")
+            .enableMultiInstanceInvalidation()
             .fallbackToDestructiveMigration()
             .build()
 

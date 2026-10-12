@@ -122,6 +122,16 @@ data class TodayItem(
 ) {
     val habit: Habit get() = bundle.habit
     val routineLabel: String? get() = bundle.currentRoutine?.title
+    val routineCaption: String?
+        get() {
+            val item = bundle.currentRoutine ?: return null
+            val size = bundle.routine.size
+            if (size <= 1) return item.title
+            val index = habit.rotationIndex.mod(size) + 1
+            return "${item.title} · $index of $size"
+        }
     val todayValue: Int
         get() = bundle.checkIns.firstOrNull { it.epochDay == LocalDate.now().toEpochDay() }?.value ?: 0
+    val todayNote: String
+        get() = bundle.checkIns.firstOrNull { it.epochDay == LocalDate.now().toEpochDay() }?.note.orEmpty()
 }

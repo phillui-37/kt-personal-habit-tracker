@@ -88,6 +88,7 @@ fun RotaNav(openHabitId: Long? = null) {
                     onAdd = vm::add,
                     onLog = vm::log,
                     onSkip = vm::skip,
+                    onNote = vm::note,
                     onSnooze = vm::snooze,
                     onWake = vm::wake,
                     onAddHabit = { nav.navigate("edit/0") },
@@ -102,6 +103,7 @@ fun RotaNav(openHabitId: Long? = null) {
                     onStatus = vm::setStatus,
                     onPeriod = vm::setPeriod,
                     onHabit = vm::setHabit,
+                    onCustomRange = vm::setCustomRange,
                 )
             }
             composable("more") {

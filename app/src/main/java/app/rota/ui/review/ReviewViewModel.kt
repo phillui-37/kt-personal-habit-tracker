@@ -23,6 +23,8 @@ data class ReviewFilter(
     val status: ReviewStatusFilter = ReviewStatusFilter.ALL,
     val period: Period? = null,
     val habitId: Long? = null,
+    val customStart: LocalDate = LocalDate.now().minusDays(29),
+    val customEnd: LocalDate = LocalDate.now(),
 )
 
 @HiltViewModel
@@ -33,7 +35,14 @@ class ReviewViewModel @Inject constructor(
 
     val state = combine(habits.observeBundles(includeArchived = true), filter) { bundles, current ->
         val today = LocalDate.now()
-        val range = PeriodWindows.namedRange(current.rangeKey, today)
+        val range = if (current.rangeKey == "custom") {
+            DateRange(
+                minOf(current.customStart, current.customEnd),
+                maxOf(current.customStart, current.customEnd),
+            )
+        } else {
+            PeriodWindows.namedRange(current.rangeKey, today)
+        }
         val summary = ReviewStats.summarize(
             bundles = bundles,
             range = range,
@@ -54,6 +63,9 @@ class ReviewViewModel @Inject constructor(
     )
 
     fun setRange(key: String) = filter.update { it.copy(rangeKey = key) }
+    fun setCustomRange(start: LocalDate, end: LocalDate) = filter.update {
+        it.copy(rangeKey = "custom", customStart = start, customEnd = end)
+    }
     fun setStatus(status: ReviewStatusFilter) = filter.update { it.copy(status = status) }
     fun setPeriod(period: Period?) = filter.update { it.copy(period = period) }
     fun setHabit(id: Long?) = filter.update { it.copy(habitId = id) }

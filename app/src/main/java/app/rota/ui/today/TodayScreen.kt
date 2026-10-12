@@ -56,6 +56,7 @@ import app.rota.domain.model.Habit
 import app.rota.domain.model.HabitBundle
 import app.rota.domain.model.HabitType
 import app.rota.domain.model.Period
+import app.rota.domain.model.RoutineItem
 import app.rota.domain.model.TodayItem
 import app.rota.domain.model.TodayStatus
 import app.rota.ui.components.EmptyState
@@ -77,11 +78,13 @@ fun TodayScreen(
     onAdd: (Long, Int) -> Unit,
     onLog: (Long, Int) -> Unit,
     onSkip: (Long) -> Unit,
+    onNote: (Long, String) -> Unit,
     onSnooze: (Long, SnoozeChoice, String) -> Unit,
     onWake: (Long) -> Unit,
     onAddHabit: () -> Unit,
 ) {
     var snoozeFor by remember { mutableStateOf<TodayItem?>(null) }
+    var noteFor by remember { mutableStateOf<TodayItem?>(null) }
     var timerFor by remember { mutableStateOf<TodayItem?>(null) }
     val dateLabel = remember {
         LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, d MMM"))
@@ -127,6 +130,7 @@ fun TodayScreen(
                         onToggle = { onToggle(item.habit.id) },
                         onAdd = { onAdd(item.habit.id, it) },
                         onSkip = { onSkip(item.habit.id) },
+                        onNote = { noteFor = item },
                         onSnooze = { snoozeFor = item },
                         onTimer = { timerFor = item },
                         onWake = { onWake(item.habit.id) },
@@ -144,6 +148,17 @@ fun TodayScreen(
             onConfirm = { choice, reason ->
                 onSnooze(item.habit.id, choice, reason)
                 snoozeFor = null
+            },
+        )
+    }
+    noteFor?.let { item ->
+        NoteSheet(
+            name = item.habit.name,
+            initial = item.todayNote,
+            onDismiss = { noteFor = null },
+            onSave = { text ->
+                onNote(item.habit.id, text)
+                noteFor = null
             },
         )
     }
@@ -168,6 +183,7 @@ private fun TodayRow(
     onToggle: () -> Unit,
     onAdd: (Int) -> Unit,
     onSkip: () -> Unit,
+    onNote: () -> Unit,
     onSnooze: () -> Unit,
     onTimer: () -> Unit,
     onWake: () -> Unit,
@@ -198,7 +214,7 @@ private fun TodayRow(
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (muted) 0.45f else 1f),
             )
             val subtitle = buildList {
-                item.routineLabel?.let { add(it) }
+                item.routineCaption?.let { add(it) }
                 add(periodLabel(item.habit.period))
                 if (item.periodTarget > 1) add("${item.periodDone}/${item.periodTarget}")
                 if (item.streak > 0) add("${item.streak} streak")
@@ -215,6 +231,14 @@ private fun TodayRow(
                     "${item.todayValue}/${item.habit.target} ${item.habit.unitLabel}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (item.todayNote.isNotBlank()) {
+                Text(
+                    item.todayNote,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
                 )
             }
         }
@@ -254,9 +278,38 @@ private fun TodayRow(
             }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 DropdownMenuItem(text = { Text("Open") }, onClick = { menu = false; onOpen() })
+                DropdownMenuItem(text = { Text("Note") }, onClick = { menu = false; onNote() })
                 DropdownMenuItem(text = { Text("Skip today") }, onClick = { menu = false; onSkip() })
                 DropdownMenuItem(text = { Text("Snooze") }, onClick = { menu = false; onSnooze() })
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NoteSheet(
+    name: String,
+    initial: String,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit,
+) {
+    var text by remember { mutableStateOf(initial) }
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.padding(horizontal = 24.dp, vertical = 8.dp)) {
+            Text("Note · $name", style = MaterialTheme.typography.titleLarge)
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("How it went") },
+            )
+            Spacer(Modifier.height(16.dp))
+            OutlinedButton(onClick = { onSave(text) }, modifier = Modifier.fillMaxWidth()) {
+                Text("Save note")
+            }
+            Spacer(Modifier.height(28.dp))
         }
     }
 }
@@ -360,8 +413,18 @@ private fun TodayPreview() {
             items = listOf(
                 TodayItem(
                     bundle = HabitBundle(
-                        habit = Habit(id = 1, name = "Strength", period = Period.WEEKLY, timesPerPeriod = 3),
-                        routine = emptyList(),
+                        habit = Habit(
+                            id = 1,
+                            name = "Strength",
+                            period = Period.WEEKLY,
+                            timesPerPeriod = 3,
+                            rotationIndex = 1,
+                        ),
+                        routine = listOf(
+                            RoutineItem(1, 1, "Core", 0),
+                            RoutineItem(2, 1, "Legs", 1),
+                            RoutineItem(3, 1, "Back", 2),
+                        ),
                     ),
                     status = TodayStatus.DUE,
                     streak = 4,
@@ -374,9 +437,18 @@ private fun TodayPreview() {
             onAdd = { _, _ -> },
             onLog = { _, _ -> },
             onSkip = {},
+            onNote = { _, _ -> },
             onSnooze = { _, _, _ -> },
             onWake = {},
             onAddHabit = {},
         )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun SnoozePreview() {
+    RotaTheme {
+        SnoozeSheet(name = "Strength", onDismiss = {}, onConfirm = { _, _ -> })
     }
 }

@@ -46,6 +46,7 @@ object PeriodWindows {
         "month" -> bounds(Period.MONTHLY, today)
         "quarter" -> bounds(Period.QUARTERLY, today)
         "year" -> bounds(Period.YEARLY, today)
+        "custom" -> DateRange(today.minusDays(29), today)
         else -> bounds(Period.WEEKLY, today)
     }
 
