@@ -71,6 +71,7 @@ import app.rota.domain.model.Period
 import app.rota.domain.model.RoutineItem
 import app.rota.domain.model.TodayItem
 import app.rota.domain.model.TodayStatus
+import app.rota.ui.components.CategoryFilterBar
 import app.rota.ui.components.EmptyState
 import app.rota.ui.components.periodLabel
 import app.rota.ui.theme.RotaTheme
@@ -97,6 +98,11 @@ fun TodayScreen(
     onBatchCheck: (Set<Long>) -> Unit = {},
     onBatchSkip: (Set<Long>) -> Unit = {},
     onBatchSnooze: (Set<Long>, SnoozeChoice, String) -> Unit = { _, _, _ -> },
+    hasAny: Boolean = items.isNotEmpty(),
+    categories: List<String> = emptyList(),
+    includeUncategorized: Boolean = false,
+    category: String? = null,
+    onCategory: (String?) -> Unit = {},
 ) {
     var snoozeFor by remember { mutableStateOf<TodayItem?>(null) }
     var noteFor by remember { mutableStateOf<TodayItem?>(null) }
@@ -165,41 +171,58 @@ fun TodayScreen(
             }
         },
     ) { padding ->
-        if (items.isEmpty()) {
-            EmptyState(
-                title = "Nothing due",
-                body = "Add a habit with a weekly rotation — Core, Legs, Back — or a yearly checkup.",
-                modifier = Modifier.padding(padding).padding(24.dp),
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+        ) {
+            CategoryFilterBar(
+                categories = categories,
+                includeUncategorized = includeUncategorized,
+                selected = category,
+                onSelect = onCategory,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
             )
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                items(items, key = { it.habit.id }) { item ->
-                    TodayRow(
-                        item = item,
-                        batch = batch,
-                        selected = item.habit.id in selectedIds,
-                        onSelect = {
-                            selectedIds = if (item.habit.id in selectedIds) {
-                                selectedIds - item.habit.id
-                            } else {
-                                selectedIds + item.habit.id
-                            }
-                        },
-                        onOpen = { onOpen(item.habit.id) },
-                        onToggle = { onToggle(item.habit.id) },
-                        onAdd = { onAdd(item.habit.id, it) },
-                        onSkip = { onSkip(item.habit.id) },
-                        onNote = { noteFor = item },
-                        onSnooze = { snoozeFor = item },
-                        onTimer = { timerFor = item },
-                        onWake = { onWake(item.habit.id) },
-                    )
+            when {
+                !hasAny -> EmptyState(
+                    title = "Nothing due",
+                    body = "Add a habit, or a rotation you can step through.",
+                    modifier = Modifier.padding(24.dp),
+                )
+                items.isEmpty() -> EmptyState(
+                    title = "Nothing in this category",
+                    body = "Choose another category, or All.",
+                    modifier = Modifier.padding(24.dp),
+                )
+                else -> LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    items(items, key = { it.habit.id }) { item ->
+                        TodayRow(
+                            item = item,
+                            batch = batch,
+                            selected = item.habit.id in selectedIds,
+                            onSelect = {
+                                selectedIds = if (item.habit.id in selectedIds) {
+                                    selectedIds - item.habit.id
+                                } else {
+                                    selectedIds + item.habit.id
+                                }
+                            },
+                            onOpen = { onOpen(item.habit.id) },
+                            onToggle = { onToggle(item.habit.id) },
+                            onAdd = { onAdd(item.habit.id, it) },
+                            onSkip = { onSkip(item.habit.id) },
+                            onNote = { noteFor = item },
+                            onSnooze = { snoozeFor = item },
+                            onTimer = { timerFor = item },
+                            onWake = { onWake(item.habit.id) },
+                        )
+                    }
+                    item { Spacer(Modifier.height(24.dp)) }
                 }
-                item { Spacer(Modifier.height(24.dp)) }
             }
         }
     }

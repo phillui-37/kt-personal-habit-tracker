@@ -35,6 +35,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.rota.domain.model.HabitBundle
+import app.rota.ui.components.CategoryFilterBar
 import app.rota.ui.components.EmptyState
 import app.rota.ui.components.periodLabel
 
@@ -44,21 +45,19 @@ fun HabitListScreen(
     bundles: List<HabitBundle>,
     onOpen: (Long) -> Unit,
     onAdd: () -> Unit,
-    onSettings: () -> Unit,
     onDelete: (Set<Long>) -> Unit,
     onUpdateCategory: (Set<Long>, String) -> Unit,
+    hasAny: Boolean = bundles.isNotEmpty(),
+    categories: List<String> = emptyList(),
+    includeUncategorized: Boolean = false,
+    category: String? = null,
+    onCategory: (String?) -> Unit = {},
 ) {
     var batch by remember { mutableStateOf(false) }
     var selectedIds by remember { mutableStateOf(emptySet<Long>()) }
     var deleteStep by remember { mutableIntStateOf(0) }
     var showCategory by remember { mutableStateOf(false) }
     val visibleIds = remember(bundles) { bundles.map { it.habit.id }.toSet() }
-    val categories = remember(bundles) {
-        bundles.map { it.habit.category.trim() }
-            .filter { it.isNotEmpty() }
-            .distinctBy { it.lowercase() }
-            .sortedBy { it.lowercase() }
-    }
     LaunchedEffect(visibleIds) {
         selectedIds = selectedIds.intersect(visibleIds)
     }
@@ -90,7 +89,6 @@ fun HabitListScreen(
                         if (bundles.isNotEmpty()) {
                             TextButton(onClick = { batch = true }) { Text("Batch") }
                         }
-                        TextButton(onClick = onSettings) { Text("Settings") }
                         TextButton(onClick = onAdd) { Text("Add") }
                     }
                 },
@@ -131,66 +129,83 @@ fun HabitListScreen(
             }
         },
     ) { padding ->
-        if (bundles.isEmpty()) {
-            EmptyState(
-                title = "No habits yet",
-                body = "Start with one daily check, or a rotating weekly strength split.",
-                modifier = Modifier.padding(padding).padding(24.dp),
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+        ) {
+            CategoryFilterBar(
+                categories = categories,
+                includeUncategorized = includeUncategorized,
+                selected = category,
+                onSelect = onCategory,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
             )
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                items(bundles, key = { it.habit.id }) { bundle ->
-                    val id = bundle.habit.id
-                    val selected = id in selectedIds
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(
-                                if (batch && selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
-                                else MaterialTheme.colorScheme.background,
-                            )
-                            .then(
-                                if (batch) {
-                                    Modifier.toggleable(
-                                        value = selected,
-                                        role = Role.Checkbox,
-                                        onValueChange = {
-                                            selectedIds = if (selected) selectedIds - id else selectedIds + id
-                                        },
-                                    )
-                                } else {
-                                    Modifier.clickable { onOpen(id) }
-                                },
-                            )
-                            .padding(vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        if (batch) {
-                            Checkbox(
-                                checked = selected,
-                                onCheckedChange = null,
-                                modifier = Modifier.clearAndSetSemantics {},
-                            )
-                        }
-                        Column(Modifier.weight(1f)) {
-                            Text(bundle.habit.name, style = MaterialTheme.typography.titleMedium)
-                            Text(
-                                buildString {
-                                    bundle.habit.category.trim().takeIf { it.isNotEmpty() }?.let {
-                                        append(it)
-                                        append(" · ")
-                                    }
-                                    append(periodLabel(bundle.habit.period))
-                                    bundle.currentRoutine?.let { append(" · "); append(it.title) }
-                                    if (bundle.habit.archived) append(" · archived")
-                                },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+            when {
+                !hasAny -> EmptyState(
+                    title = "No habits yet",
+                    body = "Start with one daily check, or a rotating weekly split.",
+                    modifier = Modifier.padding(24.dp),
+                )
+                bundles.isEmpty() -> EmptyState(
+                    title = "Nothing in this category",
+                    body = "Choose another category, or All.",
+                    modifier = Modifier.padding(24.dp),
+                )
+                else -> LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    items(bundles, key = { it.habit.id }) { bundle ->
+                        val id = bundle.habit.id
+                        val selected = id in selectedIds
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    if (batch && selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+                                    else MaterialTheme.colorScheme.background,
+                                )
+                                .then(
+                                    if (batch) {
+                                        Modifier.toggleable(
+                                            value = selected,
+                                            role = Role.Checkbox,
+                                            onValueChange = {
+                                                selectedIds = if (selected) selectedIds - id else selectedIds + id
+                                            },
+                                        )
+                                    } else {
+                                        Modifier.clickable { onOpen(id) }
+                                    },
+                                )
+                                .padding(vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            if (batch) {
+                                Checkbox(
+                                    checked = selected,
+                                    onCheckedChange = null,
+                                    modifier = Modifier.clearAndSetSemantics {},
+                                )
+                            }
+                            Column(Modifier.weight(1f)) {
+                                Text(bundle.habit.name, style = MaterialTheme.typography.titleMedium)
+                                Text(
+                                    buildString {
+                                        bundle.habit.category.trim().takeIf { it.isNotEmpty() }?.let {
+                                            append(it)
+                                            append(" · ")
+                                        }
+                                        append(periodLabel(bundle.habit.period))
+                                        bundle.currentRoutine?.let { append(" · "); append(it.title) }
+                                        if (bundle.habit.archived) append(" · archived")
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
                     }
                 }

@@ -60,6 +60,18 @@ data class Habit(
 
         fun maskOf(days: Collection<DayOfWeek>): Int =
             days.fold(0) { acc, day -> acc or weekdayBit(day) }
+
+        val WEEKDAYS: Int = maskOf(
+            listOf(
+                DayOfWeek.MONDAY,
+                DayOfWeek.TUESDAY,
+                DayOfWeek.WEDNESDAY,
+                DayOfWeek.THURSDAY,
+                DayOfWeek.FRIDAY,
+            ),
+        )
+
+        val WEEKEND: Int = maskOf(listOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY))
     }
 }
 
