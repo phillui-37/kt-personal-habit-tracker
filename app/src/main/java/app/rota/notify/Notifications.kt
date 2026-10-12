@@ -142,7 +142,7 @@ private fun showReminder(
                 when (type) {
                     HabitType.COUNT -> context.getString(R.string.log_count)
                     HabitType.DURATION -> context.getString(R.string.log_duration)
-                    else -> ""
+                    HabitType.CHECK -> ""
                 },
             )
         }

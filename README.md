@@ -15,7 +15,7 @@ Local-first habit tracker for Android. No account. Data stays on the phone unles
 
 ## Run it
 
-Open the project in Android Studio Ladybug / Koala or newer (AGP 8.7, compile SDK 35).
+Open the project in Android Studio with Android Gradle Plugin 9.4 (compile SDK 37, target SDK 37).
 
 ```
 ./gradlew :app:assembleDebug
@@ -34,7 +34,7 @@ Install the debug APK on a device or emulator (API 26+).
 | **OkHttp + coroutine wrappers** | **Used.** WebDAV needs `PROPFIND`, `MKCOL`, `PUT`, `GET`. OkHttp lets those verbs be set directly and is the usual Android TLS/proxy stack. `suspendCancellableCoroutine` makes a call cancellable when you leave Settings. |
 | Ktor Client | Built on coroutines, but WebDAV verbs are awkward, and the CIO engine is weaker on Android. The OkHttp Ktor engine is still OkHttp. |
 
-Passwords are stored in EncryptedSharedPreferences. HTTP is allowed so a LAN NAS can be used. Daily upload is optional WorkManager.
+Passwords are stored in EncryptedSharedPreferences. HTTP is allowed so a LAN NAS can be used. On Android 17 the app asks for local network access before it talks to a device on your Wi-Fi. Daily upload is optional WorkManager.
 
 ## Stack
 
