@@ -2,9 +2,10 @@ package app.rota.ui.navigation
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.FormatListBulleted
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Insights
-import androidx.compose.material.icons.outlined.Menu
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -40,12 +41,15 @@ private data class Tab(val route: String, val label: String, val icon: ImageVect
 
 private val tabs = listOf(
     Tab("today", "Today", Icons.Outlined.CalendarToday),
+    Tab("habits", "Habits", Icons.AutoMirrored.Outlined.FormatListBulleted),
     Tab("review", "Review", Icons.Outlined.Insights),
-    Tab("more", "More", Icons.Outlined.Menu),
+    Tab("settings", "Settings", Icons.Outlined.Settings),
 )
 
+data class HabitOpen(val id: Long, val token: Int)
+
 @Composable
-fun RotaNav(openHabitId: Long? = null) {
+fun RotaNav(openHabit: HabitOpen? = null) {
     val nav = rememberNavController()
     val backStack by nav.currentBackStackEntryAsState()
     val route = backStack?.destination?.route.orEmpty()
@@ -80,9 +84,9 @@ fun RotaNav(openHabitId: Long? = null) {
         ) {
             composable("today") {
                 val vm: TodayViewModel = hiltViewModel()
-                val items by vm.items.collectAsStateWithLifecycle()
+                val ui by vm.ui.collectAsStateWithLifecycle()
                 TodayScreen(
-                    items = items,
+                    items = ui.items,
                     onOpen = { nav.navigate("habit/$it") },
                     onToggle = vm::toggle,
                     onAdd = vm::add,
@@ -92,6 +96,14 @@ fun RotaNav(openHabitId: Long? = null) {
                     onSnooze = vm::snooze,
                     onWake = vm::wake,
                     onAddHabit = { nav.navigate("edit/0") },
+                    onBatchCheck = vm::checkAll,
+                    onBatchSkip = vm::skipAll,
+                    onBatchSnooze = vm::snoozeAll,
+                    hasAny = ui.hasAny,
+                    categories = ui.categories,
+                    includeUncategorized = ui.includeUncategorized,
+                    category = ui.category,
+                    onCategory = vm::setCategory,
                 )
             }
             composable("review") {
@@ -107,14 +119,20 @@ fun RotaNav(openHabitId: Long? = null) {
                     onCustomRange = vm::setCustomRange,
                 )
             }
-            composable("more") {
+            composable("habits") {
                 val vm: HabitListViewModel = hiltViewModel()
-                val bundles by vm.bundles.collectAsStateWithLifecycle()
+                val ui by vm.ui.collectAsStateWithLifecycle()
                 HabitListScreen(
-                    bundles = bundles,
+                    bundles = ui.bundles,
                     onOpen = { nav.navigate("habit/$it") },
                     onAdd = { nav.navigate("edit/0") },
-                    onSettings = { nav.navigate("settings") },
+                    onDelete = vm::deleteSelected,
+                    onUpdateCategory = vm::updateCategory,
+                    hasAny = ui.hasAny,
+                    categories = ui.categories,
+                    includeUncategorized = ui.includeUncategorized,
+                    category = ui.category,
+                    onCategory = vm::setCategory,
                 )
             }
             composable("settings") {
@@ -133,12 +151,19 @@ fun RotaNav(openHabitId: Long? = null) {
                     onBackupWebDav = vm::backupWebDav,
                     onRestoreWebDav = vm::restoreWebDav,
                     onTestWebDav = vm::testWebDav,
-                    onBack = { nav.popBackStack() },
                     routines = routines,
                     onAddRoutineItem = vm::addRoutineItem,
                     onRenameRoutineItem = vm::renameRoutineItem,
                     onDeleteRoutineItem = vm::deleteRoutineItem,
                     onMoveRoutineItem = vm::moveRoutineItem,
+                    presets = settings.routineTemplates,
+                    onAddPreset = vm::addRoutinePreset,
+                    onRenamePreset = vm::renameRoutinePreset,
+                    onDeletePreset = vm::deleteRoutinePreset,
+                    onAddPresetItem = vm::addPresetItem,
+                    onRenamePresetItem = vm::renamePresetItem,
+                    onDeletePresetItem = vm::deletePresetItem,
+                    onMovePresetItem = vm::movePresetItem,
                 )
             }
             composable(
@@ -148,6 +173,7 @@ fun RotaNav(openHabitId: Long? = null) {
                 val vm: HabitEditorViewModel = hiltViewModel()
                 val draft by vm.draft.collectAsStateWithLifecycle()
                 val categories by vm.categorySuggestions.collectAsStateWithLifecycle()
+                val templates by vm.routineTemplates.collectAsStateWithLifecycle()
                 HabitEditScreen(
                     draft = draft,
                     onChange = vm::update,
@@ -155,6 +181,7 @@ fun RotaNav(openHabitId: Long? = null) {
                     onSave = vm::save,
                     onBack = { nav.popBackStack() },
                     categorySuggestions = categories,
+                    templates = templates,
                 )
             }
             composable(
@@ -178,9 +205,13 @@ fun RotaNav(openHabitId: Long? = null) {
         }
     }
 
-    androidx.compose.runtime.LaunchedEffect(openHabitId) {
-        if (openHabitId != null && openHabitId > 0) {
-            nav.navigate("habit/$openHabitId")
+    androidx.compose.runtime.LaunchedEffect(openHabit?.token) {
+        val id = openHabit?.id ?: return@LaunchedEffect
+        if (id > 0) {
+            nav.navigate("habit/$id") {
+                popUpTo(nav.graph.findStartDestination().id) { saveState = true }
+                launchSingleTop = true
+            }
         }
     }
 }

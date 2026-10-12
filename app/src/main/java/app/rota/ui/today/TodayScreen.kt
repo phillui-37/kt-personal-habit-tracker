@@ -2,6 +2,7 @@ package app.rota.ui.today
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -44,6 +46,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -54,6 +57,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -66,6 +71,7 @@ import app.rota.domain.model.Period
 import app.rota.domain.model.RoutineItem
 import app.rota.domain.model.TodayItem
 import app.rota.domain.model.TodayStatus
+import app.rota.ui.components.CategoryFilterBar
 import app.rota.ui.components.EmptyState
 import app.rota.ui.components.periodLabel
 import app.rota.ui.theme.RotaTheme
@@ -89,12 +95,32 @@ fun TodayScreen(
     onSnooze: (Long, SnoozeChoice, String) -> Unit,
     onWake: (Long) -> Unit,
     onAddHabit: () -> Unit,
+    onBatchCheck: (Set<Long>) -> Unit = {},
+    onBatchSkip: (Set<Long>) -> Unit = {},
+    onBatchSnooze: (Set<Long>, SnoozeChoice, String) -> Unit = { _, _, _ -> },
+    hasAny: Boolean = items.isNotEmpty(),
+    categories: List<String> = emptyList(),
+    includeUncategorized: Boolean = false,
+    category: String? = null,
+    onCategory: (String?) -> Unit = {},
 ) {
     var snoozeFor by remember { mutableStateOf<TodayItem?>(null) }
     var noteFor by remember { mutableStateOf<TodayItem?>(null) }
     var timerFor by remember { mutableStateOf<TodayItem?>(null) }
+    var batch by remember { mutableStateOf(false) }
+    var selectedIds by remember { mutableStateOf(emptySet<Long>()) }
+    var batchSnooze by remember { mutableStateOf(false) }
+    val visibleIds = remember(items) { items.map { it.habit.id }.toSet() }
     val dateLabel = remember {
         LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, d MMM"))
+    }
+    LaunchedEffect(visibleIds) {
+        selectedIds = selectedIds.intersect(visibleIds)
+    }
+    fun leaveBatch() {
+        batch = false
+        selectedIds = emptySet()
+        batchSnooze = false
     }
 
     Scaffold(
@@ -112,38 +138,91 @@ fun TodayScreen(
                     }
                 },
                 actions = {
-                    TextButton(onClick = onAddHabit) { Text("Add") }
+                    if (batch) {
+                        val allSelected = visibleIds.isNotEmpty() && selectedIds.containsAll(visibleIds)
+                        TextButton(onClick = {
+                            selectedIds = if (allSelected) emptySet() else visibleIds
+                        }) { Text(if (allSelected) "None" else "All") }
+                        TextButton(onClick = { leaveBatch() }) { Text("Done") }
+                    } else {
+                        if (items.isNotEmpty()) {
+                            TextButton(onClick = { batch = true }) { Text("Batch") }
+                        }
+                        TextButton(onClick = onAddHabit) { Text("Add") }
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },
+        bottomBar = {
+            if (batch) {
+                BatchActionBar(
+                    count = selectedIds.size,
+                    onCheck = {
+                        onBatchCheck(selectedIds)
+                        leaveBatch()
+                    },
+                    onSkip = {
+                        onBatchSkip(selectedIds)
+                        leaveBatch()
+                    },
+                    onSnooze = { batchSnooze = true },
+                )
+            }
+        },
     ) { padding ->
-        if (items.isEmpty()) {
-            EmptyState(
-                title = "Nothing due",
-                body = "Add a habit with a weekly rotation — Core, Legs, Back — or a yearly checkup.",
-                modifier = Modifier.padding(padding).padding(24.dp),
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+        ) {
+            CategoryFilterBar(
+                categories = categories,
+                includeUncategorized = includeUncategorized,
+                selected = category,
+                onSelect = onCategory,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
             )
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                items(items, key = { it.habit.id }) { item ->
-                    TodayRow(
-                        item = item,
-                        onOpen = { onOpen(item.habit.id) },
-                        onToggle = { onToggle(item.habit.id) },
-                        onAdd = { onAdd(item.habit.id, it) },
-                        onSkip = { onSkip(item.habit.id) },
-                        onNote = { noteFor = item },
-                        onSnooze = { snoozeFor = item },
-                        onTimer = { timerFor = item },
-                        onWake = { onWake(item.habit.id) },
-                    )
+            when {
+                !hasAny -> EmptyState(
+                    title = "Nothing due",
+                    body = "Add a habit, or a rotation you can step through.",
+                    modifier = Modifier.padding(24.dp),
+                )
+                items.isEmpty() -> EmptyState(
+                    title = "Nothing in this category",
+                    body = "Choose another category, or All.",
+                    modifier = Modifier.padding(24.dp),
+                )
+                else -> LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    items(items, key = { it.habit.id }) { item ->
+                        TodayRow(
+                            item = item,
+                            batch = batch,
+                            selected = item.habit.id in selectedIds,
+                            onSelect = {
+                                selectedIds = if (item.habit.id in selectedIds) {
+                                    selectedIds - item.habit.id
+                                } else {
+                                    selectedIds + item.habit.id
+                                }
+                            },
+                            onOpen = { onOpen(item.habit.id) },
+                            onToggle = { onToggle(item.habit.id) },
+                            onAdd = { onAdd(item.habit.id, it) },
+                            onSkip = { onSkip(item.habit.id) },
+                            onNote = { noteFor = item },
+                            onSnooze = { snoozeFor = item },
+                            onTimer = { timerFor = item },
+                            onWake = { onWake(item.habit.id) },
+                        )
+                    }
+                    item { Spacer(Modifier.height(24.dp)) }
                 }
-                item { Spacer(Modifier.height(24.dp)) }
             }
         }
     }
@@ -155,6 +234,22 @@ fun TodayScreen(
             onConfirm = { choice, reason ->
                 onSnooze(item.habit.id, choice, reason)
                 snoozeFor = null
+            },
+        )
+    }
+    if (batchSnooze) {
+        val count = selectedIds.size
+        val name = if (count == 1) {
+            items.firstOrNull { it.habit.id in selectedIds }?.habit?.name ?: "habit"
+        } else {
+            "$count habits"
+        }
+        SnoozeSheet(
+            name = name,
+            onDismiss = { batchSnooze = false },
+            onConfirm = { choice, reason ->
+                onBatchSnooze(selectedIds, choice, reason)
+                leaveBatch()
             },
         )
     }
@@ -184,8 +279,37 @@ fun TodayScreen(
 }
 
 @Composable
+private fun BatchActionBar(
+    count: Int,
+    onCheck: () -> Unit,
+    onSkip: () -> Unit,
+    onSnooze: () -> Unit,
+) {
+    val enabled = count > 0
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            if (count == 0) "None selected" else if (count == 1) "1 selected" else "$count selected",
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(start = 12.dp).weight(1f),
+        )
+        TextButton(onClick = onCheck, enabled = enabled) { Text("Check") }
+        TextButton(onClick = onSkip, enabled = enabled) { Text("Skip") }
+        TextButton(onClick = onSnooze, enabled = enabled) { Text("Snooze") }
+    }
+}
+
+@Composable
 private fun TodayRow(
     item: TodayItem,
+    batch: Boolean,
+    selected: Boolean,
+    onSelect: () -> Unit,
     onOpen: () -> Unit,
     onToggle: () -> Unit,
     onAdd: (Int) -> Unit,
@@ -201,10 +325,32 @@ private fun TodayRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+            .background(
+                if (batch && selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+            )
+            .then(
+                if (batch) {
+                    Modifier.toggleable(
+                        value = selected,
+                        role = Role.Checkbox,
+                        onValueChange = { onSelect() },
+                    )
+                } else {
+                    Modifier
+                },
+            )
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (batch) {
+            Checkbox(
+                checked = selected,
+                onCheckedChange = null,
+                modifier = Modifier.clearAndSetSemantics {},
+            )
+            Spacer(Modifier.width(4.dp))
+        }
         Box(
             modifier = Modifier
                 .width(4.dp)
@@ -250,45 +396,47 @@ private fun TodayRow(
                 )
             }
         }
-        when {
-            item.status == TodayStatus.SNOOZED -> TextButton(onClick = onWake) { Text("Wake") }
-            item.habit.type == HabitType.CHECK -> {
-                FilledIconButton(
-                    onClick = onToggle,
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = if (item.status == TodayStatus.DONE) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.surface,
-                        contentColor = if (item.status == TodayStatus.DONE) MaterialTheme.colorScheme.onPrimary
-                        else MaterialTheme.colorScheme.onSurface,
-                    ),
-                ) {
-                    Icon(Icons.Outlined.Check, contentDescription = "Done")
+        if (!batch) {
+            when {
+                item.status == TodayStatus.SNOOZED -> TextButton(onClick = onWake) { Text("Wake") }
+                item.habit.type == HabitType.CHECK -> {
+                    FilledIconButton(
+                        onClick = onToggle,
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = if (item.status == TodayStatus.DONE) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.surface,
+                            contentColor = if (item.status == TodayStatus.DONE) MaterialTheme.colorScheme.onPrimary
+                            else MaterialTheme.colorScheme.onSurface,
+                        ),
+                    ) {
+                        Icon(Icons.Outlined.Check, contentDescription = "Done")
+                    }
+                }
+                item.habit.type == HabitType.COUNT -> {
+                    IconButton(onClick = { onAdd(-1) }) {
+                        Text("−", style = MaterialTheme.typography.titleLarge)
+                    }
+                    IconButton(onClick = { onAdd(1) }) {
+                        Icon(Icons.Outlined.Add, contentDescription = "Add")
+                    }
+                }
+                item.habit.type == HabitType.DURATION -> {
+                    AssistChip(onClick = { onAdd(5) }, label = { Text("+5") })
+                    IconButton(onClick = onTimer) {
+                        Icon(Icons.Outlined.Timer, contentDescription = "Timer")
+                    }
                 }
             }
-            item.habit.type == HabitType.COUNT -> {
-                IconButton(onClick = { onAdd(-1) }) {
-                    Text("−", style = MaterialTheme.typography.titleLarge)
+            Box {
+                IconButton(onClick = { menu = true }) {
+                    Icon(Icons.Outlined.MoreHoriz, contentDescription = "More")
                 }
-                IconButton(onClick = { onAdd(1) }) {
-                    Icon(Icons.Outlined.Add, contentDescription = "Add")
+                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    DropdownMenuItem(text = { Text("Open") }, onClick = { menu = false; onOpen() })
+                    DropdownMenuItem(text = { Text("Note") }, onClick = { menu = false; onNote() })
+                    DropdownMenuItem(text = { Text("Skip today") }, onClick = { menu = false; onSkip() })
+                    DropdownMenuItem(text = { Text("Snooze") }, onClick = { menu = false; onSnooze() })
                 }
-            }
-            item.habit.type == HabitType.DURATION -> {
-                AssistChip(onClick = { onAdd(5) }, label = { Text("+5") })
-                IconButton(onClick = onTimer) {
-                    Icon(Icons.Outlined.Timer, contentDescription = "Timer")
-                }
-            }
-        }
-        Box {
-            IconButton(onClick = { menu = true }) {
-                Icon(Icons.Outlined.MoreHoriz, contentDescription = "More")
-            }
-            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                DropdownMenuItem(text = { Text("Open") }, onClick = { menu = false; onOpen() })
-                DropdownMenuItem(text = { Text("Note") }, onClick = { menu = false; onNote() })
-                DropdownMenuItem(text = { Text("Skip today") }, onClick = { menu = false; onSkip() })
-                DropdownMenuItem(text = { Text("Snooze") }, onClick = { menu = false; onSnooze() })
             }
         }
     }

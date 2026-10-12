@@ -4,13 +4,15 @@ Local-first habit tracker for Android. No account. Data stays on the phone unles
 
 ## What it does
 
-- **Today** — due habits only. Check off, log a count, or add minutes (chips or a simple timer).
-- **Rotating routines** — a strength split can cycle Core → Legs → Back. The current item advances when you complete the habit, not when you skip or snooze.
-- **Cadence** — daily, week, month, quarter, year, or every N days. Optional weekday mask. “3 times this week” style targets.
+- **Today** — due habits only. Check off, log a count, or add minutes (chips or a simple timer). Filter by category.
+- **Habits** — the full list, including archived habits, with the same category filter.
+- **Rotating routines** — a habit can cycle through a list of items. Presets are edited in Settings. The current item advances when you complete the habit, not when you skip or snooze.
+- **Cadence** — daily, week, month, quarter, year, or every N days. Weekday (Mon–Fri) and weekend presets, or any mix of days. “3 times this week” style targets.
 - **Count and duration** — a glass-of-water habit can target 8; a run can target 30 minutes. Partial logs stay due until the target is met.
 - **Snooze with a reason** — 1 hour, tonight, or tomorrow. Reasons show on the Review screen.
-- **Review** — filter by range, status, cadence, and habit. Missed slots are counted when a period closes, not on every empty weekday.
-- **Widget** — due count and a short checklist. Tap to complete.
+- **Review** — filter by range, status, cadence, habit, and category. Missed slots are counted when a period closes, not on every empty weekday.
+- **Widget** — due count and a short checklist. Tap an item to open it. Tap anywhere else to open the app.
+- **Settings** — theme, routine presets, reminders, and backup.
 - **Backup and restore, always together** — file export/import, or the same JSON on WebDAV. Restore asks before it replaces local data.
 
 ## Run it

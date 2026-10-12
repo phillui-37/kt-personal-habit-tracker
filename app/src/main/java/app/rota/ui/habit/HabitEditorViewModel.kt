@@ -3,6 +3,8 @@ package app.rota.ui.habit
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.rota.data.prefs.RoutineTemplate
+import app.rota.data.prefs.SettingsStore
 import app.rota.data.repo.HabitRepository
 import app.rota.domain.model.Habit
 import app.rota.domain.model.HabitType
@@ -47,6 +49,7 @@ class HabitEditorViewModel @Inject constructor(
     private val habits: HabitRepository,
     private val reminders: ReminderScheduler,
     private val widgets: WidgetRefresher,
+    settingsStore: SettingsStore,
 ) : ViewModel() {
     private val habitId: Long = savedStateHandle.get<Long>("habitId") ?: 0L
     private val _draft = MutableStateFlow(HabitDraft(id = habitId))
@@ -58,6 +61,9 @@ class HabitEditorViewModel @Inject constructor(
                 .distinctBy { it.lowercase() }
                 .sortedBy { it.lowercase() }
         }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val routineTemplates: StateFlow<List<RoutineTemplate>> = settingsStore.settings
+        .map { it.routineTemplates }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     init {
@@ -94,7 +100,7 @@ class HabitEditorViewModel @Inject constructor(
     }
 
     fun applyTemplate(titles: List<String>) {
-        _draft.update { it.copy(routine = titles, period = if (it.period == Period.DAILY) Period.WEEKLY else it.period) }
+        _draft.update { it.copy(routine = titles) }
     }
 
     suspend fun save(): Boolean {

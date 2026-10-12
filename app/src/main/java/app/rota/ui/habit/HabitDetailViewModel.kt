@@ -4,12 +4,15 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.rota.data.repo.HabitRepository
+import app.rota.domain.CategoryFilter
 import app.rota.domain.model.HabitBundle
 import app.rota.notify.ReminderScheduler
 import app.rota.widget.WidgetRefresher
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -44,10 +47,58 @@ class HabitDetailViewModel @Inject constructor(
     }
 }
 
+data class HabitListUi(
+    val bundles: List<HabitBundle> = emptyList(),
+    val hasAny: Boolean = false,
+    val categories: List<String> = emptyList(),
+    val includeUncategorized: Boolean = false,
+    val category: String? = null,
+)
+
 @HiltViewModel
 class HabitListViewModel @Inject constructor(
-    habits: HabitRepository,
+    private val habits: HabitRepository,
+    private val reminders: ReminderScheduler,
+    private val widgets: WidgetRefresher,
 ) : ViewModel() {
-    val bundles = habits.observeBundles(includeArchived = true)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    private val categoryFilter = MutableStateFlow<String?>(null)
+
+    val ui: StateFlow<HabitListUi> = combine(
+        habits.observeBundles(includeArchived = true),
+        categoryFilter,
+    ) { bundles, selected ->
+        val named = CategoryFilter.named(bundles.map { it.habit.category })
+        val hasUncategorized = bundles.any { it.habit.category.isBlank() }
+        val effective = CategoryFilter.effective(selected, named, hasUncategorized)
+        HabitListUi(
+            bundles = bundles.filter { CategoryFilter.matches(it.habit.category, effective) },
+            hasAny = bundles.isNotEmpty(),
+            categories = named,
+            includeUncategorized = hasUncategorized,
+            category = effective,
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HabitListUi())
+
+    fun setCategory(category: String?) {
+        categoryFilter.value = category
+    }
+
+    fun deleteSelected(ids: Set<Long>) {
+        if (ids.isEmpty()) return
+        viewModelScope.launch {
+            ids.forEach { id ->
+                habits.deleteHabit(id)
+                reminders.cancel(id)
+            }
+            widgets.refresh()
+        }
+    }
+
+    fun updateCategory(ids: Set<Long>, category: String) {
+        if (ids.isEmpty()) return
+        viewModelScope.launch {
+            habits.updateCategory(ids, category)
+            widgets.refresh()
+        }
+    }
 }

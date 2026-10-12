@@ -21,6 +21,8 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import java.io.File
 import java.security.GeneralSecurityException
 import java.security.KeyStore
@@ -47,9 +49,28 @@ data class WebDavConfig(
         get() = url.isNotBlank() && remotePath.isNotBlank()
 }
 
+@Serializable
+data class RoutineTemplate(
+    val id: String,
+    val name: String,
+    val items: List<String> = emptyList(),
+) {
+    companion object {
+        private val json = Json { ignoreUnknownKeys = true }
+
+        fun encode(templates: List<RoutineTemplate>): String = json.encodeToString(templates)
+
+        fun decode(raw: String?): List<RoutineTemplate> {
+            if (raw.isNullOrBlank()) return emptyList()
+            return runCatching { json.decodeFromString<List<RoutineTemplate>>(raw) }.getOrDefault(emptyList())
+        }
+    }
+}
+
 data class AppSettings(
     val theme: ThemeMode = ThemeMode.SYSTEM,
     val webDav: WebDavConfig = WebDavConfig(),
+    val routineTemplates: List<RoutineTemplate> = emptyList(),
 )
 
 @Singleton
@@ -62,6 +83,7 @@ class SettingsStore @Inject constructor(
     private val userKey = stringPreferencesKey("webdav_user")
     private val pathKey = stringPreferencesKey("webdav_path")
     private val passwordKey = stringPreferencesKey("webdav_password")
+    private val templatesKey = stringPreferencesKey("routine_templates")
     private val cipher = KeystoreSecret()
     private val secretsMutex = Mutex()
     private val legacyMigrated = AtomicBoolean(false)
@@ -80,10 +102,15 @@ class SettingsStore @Inject constructor(
                         remotePath = prefs[pathKey] ?: "rota-backup.json",
                         autoDaily = prefs[autoBackupKey] ?: false,
                     ),
+                    routineTemplates = RoutineTemplate.decode(prefs[templatesKey]),
                 )
             },
         )
     }.distinctUntilChanged()
+
+    suspend fun setRoutineTemplates(templates: List<RoutineTemplate>) {
+        context.dataStore.edit { it[templatesKey] = RoutineTemplate.encode(templates) }
+    }
 
     suspend fun setTheme(mode: ThemeMode) {
         context.dataStore.edit { it[themeKey] = mode.name }

@@ -20,12 +20,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -45,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import app.rota.data.prefs.AppSettings
+import app.rota.data.prefs.RoutineTemplate
 import app.rota.data.prefs.ThemeMode
 import app.rota.data.prefs.WebDavConfig
 import app.rota.ui.components.ChipRow
@@ -65,12 +62,19 @@ fun SettingsScreen(
     onBackupWebDav: () -> Unit,
     onRestoreWebDav: () -> Unit,
     onTestWebDav: (WebDavConfig) -> Unit,
-    onBack: () -> Unit,
     routines: List<RoutineHabitUi> = emptyList(),
     onAddRoutineItem: (Long, String) -> Unit = { _, _ -> },
     onRenameRoutineItem: (Long, Int, String) -> Unit = { _, _, _ -> },
     onDeleteRoutineItem: (Long, Int) -> Unit = { _, _ -> },
     onMoveRoutineItem: (Long, Int, Int) -> Unit = { _, _, _ -> },
+    presets: List<RoutineTemplate> = emptyList(),
+    onAddPreset: (String) -> Unit = {},
+    onRenamePreset: (String, String) -> Unit = { _, _ -> },
+    onDeletePreset: (String) -> Unit = {},
+    onAddPresetItem: (String, String) -> Unit = { _, _ -> },
+    onRenamePresetItem: (String, Int, String) -> Unit = { _, _, _ -> },
+    onDeletePresetItem: (String, Int) -> Unit = { _, _ -> },
+    onMovePresetItem: (String, Int, Int) -> Unit = { _, _, _ -> },
 ) {
     val context = LocalContext.current
     var web by remember(settings.webDav) { mutableStateOf(settings.webDav) }
@@ -118,11 +122,6 @@ fun SettingsScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Settings") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
-                    }
-                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },
@@ -138,6 +137,17 @@ fun SettingsScreen(
             ChipRow(
                 options = ThemeMode.entries.map { it.name.lowercase().replaceFirstChar(Char::uppercase) to (settings.theme == it) },
                 onSelect = { onTheme(ThemeMode.entries[it]) },
+            )
+
+            RoutinePresetSection(
+                presets = presets,
+                onAdd = onAddPreset,
+                onRename = onRenamePreset,
+                onDelete = onDeletePreset,
+                onAddItem = onAddPresetItem,
+                onRenameItem = onRenamePresetItem,
+                onDeleteItem = onDeletePresetItem,
+                onMoveItem = onMovePresetItem,
             )
 
             RoutineSettingsSection(

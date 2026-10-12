@@ -34,6 +34,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import app.rota.domain.CategoryFilter
+import app.rota.domain.model.Habit
 import app.rota.domain.model.Period
 import app.rota.ui.theme.HabitPalette
 import java.time.DayOfWeek
@@ -67,6 +69,21 @@ fun WeekdayPicker(
     mask: Int,
     onChange: (Int) -> Unit,
 ) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.padding(bottom = 8.dp),
+    ) {
+        WeekdayPresetChip(
+            label = "Weekday",
+            selected = mask == Habit.WEEKDAYS,
+            onClick = { onChange(if (mask == Habit.WEEKDAYS) 0 else Habit.WEEKDAYS) },
+        )
+        WeekdayPresetChip(
+            label = "Weekend",
+            selected = mask == Habit.WEEKEND,
+            onClick = { onChange(if (mask == Habit.WEEKEND) 0 else Habit.WEEKEND) },
+        )
+    }
     val days = DayOfWeek.entries
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -106,6 +123,42 @@ fun WeekdayPicker(
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(top = 6.dp),
     )
+}
+
+@Composable
+private fun WeekdayPresetChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    FilterChip(selected = selected, onClick = onClick, label = { Text(label) })
+}
+
+@Composable
+fun CategoryFilterBar(
+    categories: List<String>,
+    includeUncategorized: Boolean,
+    selected: String?,
+    onSelect: (String?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (!CategoryFilter.visible(categories, includeUncategorized)) return
+    val options = buildList {
+        add(null to "All")
+        categories.forEach { add(it to it) }
+        if (includeUncategorized) add("" to "Uncategorized")
+    }
+    ChipRow(
+        options = options.map { (value, label) -> label to categoryChipSelected(selected, value) },
+        onSelect = { onSelect(options[it].first) },
+        modifier = modifier,
+    )
+}
+
+private fun categoryChipSelected(current: String?, option: String?): Boolean = when {
+    current == null && option == null -> true
+    current == null || option == null -> false
+    else -> current.equals(option, ignoreCase = true)
 }
 
 @Composable
