@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.core.net.toUri
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.Arrangement
@@ -49,6 +50,8 @@ import app.rota.data.prefs.WebDavConfig
 import app.rota.ui.components.ChipRow
 import app.rota.ui.components.SectionLabel
 
+private const val ACCESS_LOCAL_NETWORK = "android.permission.ACCESS_LOCAL_NETWORK"
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
@@ -85,7 +88,7 @@ fun SettingsScreen(
     var localNetworkGranted by remember {
         mutableStateOf(
             !needsLocalNetwork ||
-                ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_LOCAL_NETWORK) == PackageManager.PERMISSION_GRANTED,
+                ContextCompat.checkSelfPermission(context, ACCESS_LOCAL_NETWORK) == PackageManager.PERMISSION_GRANTED,
         )
     }
     var afterLocalNetworkGrant by remember { mutableStateOf<(() -> Unit)?>(null) }
@@ -97,7 +100,7 @@ fun SettingsScreen(
     }
     fun requestLocalNetwork() {
         if (!localNetworkGranted) {
-            localNetworkPermission.launch(Manifest.permission.ACCESS_LOCAL_NETWORK)
+            localNetworkPermission.launch(ACCESS_LOCAL_NETWORK)
         }
     }
 
@@ -106,7 +109,7 @@ fun SettingsScreen(
             action()
         } else {
             afterLocalNetworkGrant = action
-            localNetworkPermission.launch(Manifest.permission.ACCESS_LOCAL_NETWORK)
+            localNetworkPermission.launch(ACCESS_LOCAL_NETWORK)
         }
     }
 
@@ -160,7 +163,7 @@ fun SettingsScreen(
             if (Build.VERSION.SDK_INT >= 31) {
                 OutlinedButton(onClick = {
                     context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
-                        data = Uri.parse("package:${context.packageName}")
+                        data = "package:${context.packageName}".toUri()
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     })
                 }) {

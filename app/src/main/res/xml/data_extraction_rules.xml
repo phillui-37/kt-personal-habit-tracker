@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules>
     <cloud-backup>
+        <!-- Include-only. rota_secrets is omitted because it is not listed. -->
         <include domain="database" path="rota.db" />
-        <exclude domain="sharedpref" path="rota_secrets.xml" />
     </cloud-backup>
     <device-transfer>
         <include domain="database" path="rota.db" />

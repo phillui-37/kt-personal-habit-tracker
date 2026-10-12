@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.rota.domain.model.Period
@@ -38,7 +39,6 @@ import app.rota.ui.theme.HabitPalette
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.TextStyle
-import java.util.Locale
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -75,7 +75,7 @@ fun WeekdayPicker(
         days.forEach { day ->
             val bit = 1 shl (day.value - 1)
             val actuallySelected = mask != 0 && mask and bit != 0
-            val label = day.getDisplayName(TextStyle.NARROW, Locale.getDefault())
+            val label = day.getDisplayName(TextStyle.NARROW, LocalLocale.current.platformLocale)
             Box(
                 modifier = Modifier
                     .weight(1f)

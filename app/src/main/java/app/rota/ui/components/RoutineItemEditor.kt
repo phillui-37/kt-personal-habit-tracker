@@ -38,8 +38,8 @@ fun RoutineItemEditor(
     onAdd: (String) -> Unit,
     onRename: (index: Int, title: String) -> Unit,
     onDelete: (index: Int) -> Unit,
-    onMove: ((from: Int, to: Int) -> Unit)? = null,
     modifier: Modifier = Modifier,
+    onMove: ((from: Int, to: Int) -> Unit)? = null,
 ) {
     var draft by remember { mutableStateOf("") }
     var editingIndex by remember { mutableIntStateOf(-1) }
