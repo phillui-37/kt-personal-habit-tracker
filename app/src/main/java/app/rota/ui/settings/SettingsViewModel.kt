@@ -78,10 +78,7 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun setWebDav(config: WebDavConfig) {
-        viewModelScope.launch {
-            settingsStore.setWebDav(config)
-            BackupWorker.sync(context, config.autoDaily && config.isConfigured)
-        }
+        viewModelScope.launch { persistWebDav(config) }
     }
 
     fun exportTo(uri: Uri) = runBackup("Backup saved.") {
@@ -95,12 +92,14 @@ class SettingsViewModel @Inject constructor(
         afterRestore()
     }
 
-    fun backupWebDav() = runBackup("Uploaded to WebDAV.") {
-        backup.backupToWebDav()
+    fun backupWebDav(config: WebDavConfig) = runBackup("Uploaded to WebDAV.") {
+        persistWebDav(config)
+        backup.backupToWebDav(config)
     }
 
-    fun restoreWebDav() = runBackup("Restored from WebDAV.") {
-        backup.restoreFromWebDav()
+    fun restoreWebDav(config: WebDavConfig) = runBackup("Restored from WebDAV.") {
+        persistWebDav(config)
+        backup.restoreFromWebDav(config)
         afterRestore()
     }
 
@@ -195,6 +194,11 @@ class SettingsViewModel @Inject constructor(
                 widgets.refresh()
             }
         }
+    }
+
+    private suspend fun persistWebDav(config: WebDavConfig) {
+        settingsStore.setWebDav(config)
+        BackupWorker.sync(context, config.autoDaily && config.isConfigured)
     }
 
     private suspend fun afterRestore() {

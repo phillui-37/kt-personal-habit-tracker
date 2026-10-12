@@ -30,22 +30,23 @@ class BackupRepository @Inject constructor(
     }
 
     suspend fun backupToWebDav(config: WebDavConfig? = null) {
-        val resolved = config ?: settings.settings.first().webDav
+        val resolved = (config ?: settings.settings.first().webDav).normalized()
         require(resolved.isConfigured) { "Add a WebDAV URL and file path first." }
         val bytes = encode(habits.exportBackup())
         webDav.put(resolved.url, resolved.username, resolved.password, resolved.remotePath, bytes)
     }
 
     suspend fun restoreFromWebDav(config: WebDavConfig? = null) {
-        val resolved = config ?: settings.settings.first().webDav
+        val resolved = (config ?: settings.settings.first().webDav).normalized()
         require(resolved.isConfigured) { "Add a WebDAV URL and file path first." }
         val bytes = webDav.get(resolved.url, resolved.username, resolved.password, resolved.remotePath)
         restoreFromBytes(bytes)
     }
 
     suspend fun testWebDav(config: WebDavConfig) {
-        require(config.url.isNotBlank()) { "Add a WebDAV URL first." }
-        webDav.test(config.url, config.username, config.password, config.remotePath)
+        val resolved = config.normalized()
+        require(resolved.url.isNotBlank()) { "Add a WebDAV URL first." }
+        webDav.test(resolved.url, resolved.username, resolved.password, resolved.remotePath)
     }
 
     private suspend fun restoreFromBytes(bytes: ByteArray) {
@@ -56,4 +57,10 @@ class BackupRepository @Inject constructor(
 
     private fun encode(payload: BackupPayload): ByteArray =
         json.encodeToString(BackupPayload.serializer(), payload).toByteArray()
+
+    private fun WebDavConfig.normalized() = copy(
+        url = url.trim(),
+        username = username.trim(),
+        remotePath = remotePath.trim().ifBlank { "rota-backup.json" },
+    )
 }
