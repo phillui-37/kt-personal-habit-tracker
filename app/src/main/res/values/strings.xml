@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">Rota</string>
+    <string name="reminders_channel">Habit reminders</string>
+    <string name="reminders_channel_body">Due habits at the time you chose</string>
+    <string name="reminder_body">Due today</string>
+    <string name="done">Done</string>
+    <string name="snooze">Snooze</string>
+    <string name="log_count">Log a count</string>
+    <string name="log_duration">Log time</string>
+    <string name="widget_description">Today\'s due habits</string>
+</resources>
