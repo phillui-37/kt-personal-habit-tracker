@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
+    <!-- Include-only. rota_secrets is omitted because it is not listed. -->
     <include domain="database" path="rota.db" />
     <include domain="sharedpref" path="rota_settings.preferences_pb" />
-    <exclude domain="sharedpref" path="rota_secrets.xml" />
 </full-backup-content>

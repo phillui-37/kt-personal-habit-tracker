@@ -6,9 +6,11 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import app.rota.MainActivity
 import app.rota.R
 import app.rota.di.rota
@@ -24,7 +26,6 @@ import kotlinx.coroutines.launch
 private val notifyScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
 fun createReminderChannel(context: Context) {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
     val channel = NotificationChannel(
         ReminderScheduler.CHANNEL_ID,
         context.getString(R.string.reminders_channel),
@@ -147,6 +148,12 @@ private fun showReminder(
             )
         }
     }
+    if (Build.VERSION.SDK_INT >= 33 &&
+        ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) !=
+        PackageManager.PERMISSION_GRANTED
+    ) {
+        return
+    }
     val notification = NotificationCompat.Builder(context, ReminderScheduler.CHANNEL_ID)
         .setSmallIcon(R.drawable.ic_notification)
         .setContentTitle(name)
@@ -156,5 +163,9 @@ private fun showReminder(
         .addAction(0, context.getString(R.string.done), done)
         .addAction(0, context.getString(R.string.snooze), snooze)
         .build()
-    NotificationManagerCompat.from(context).notify(habitId.toInt(), notification)
+    try {
+        NotificationManagerCompat.from(context).notify(habitId.toInt(), notification)
+    } catch (_: SecurityException) {
+        // The user can revoke notification permission after the check above.
+    }
 }

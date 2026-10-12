@@ -4,6 +4,7 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import app.rota.domain.model.Habit
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.LocalDate
@@ -41,7 +42,10 @@ class ReminderScheduler @Inject constructor(
         alarms.cancel(pending(habitId))
     }
 
-    fun canExact(): Boolean = alarms.canScheduleExactAlarms()
+    fun canExact(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true
+        return alarms.canScheduleExactAlarms()
+    }
 
     private fun nextTriggerMillis(minutesFromMidnight: Int, now: LocalDateTime = LocalDateTime.now()): Long {
         val hour = (minutesFromMidnight / 60).coerceIn(0, 23)
