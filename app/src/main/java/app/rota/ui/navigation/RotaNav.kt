@@ -103,6 +103,7 @@ fun RotaNav(openHabitId: Long? = null) {
                     onStatus = vm::setStatus,
                     onPeriod = vm::setPeriod,
                     onHabit = vm::setHabit,
+                    onCategory = vm::setCategory,
                     onCustomRange = vm::setCustomRange,
                 )
             }
@@ -120,6 +121,7 @@ fun RotaNav(openHabitId: Long? = null) {
                 val vm: SettingsViewModel = hiltViewModel()
                 val settings by vm.settings.collectAsStateWithLifecycle()
                 val backupUi by vm.backupUi.collectAsStateWithLifecycle()
+                val routines by vm.routines.collectAsStateWithLifecycle()
                 SettingsScreen(
                     settings = settings,
                     backupUi = backupUi,
@@ -132,6 +134,11 @@ fun RotaNav(openHabitId: Long? = null) {
                     onRestoreWebDav = vm::restoreWebDav,
                     onTestWebDav = vm::testWebDav,
                     onBack = { nav.popBackStack() },
+                    routines = routines,
+                    onAddRoutineItem = vm::addRoutineItem,
+                    onRenameRoutineItem = vm::renameRoutineItem,
+                    onDeleteRoutineItem = vm::deleteRoutineItem,
+                    onMoveRoutineItem = vm::moveRoutineItem,
                 )
             }
             composable(
@@ -140,12 +147,14 @@ fun RotaNav(openHabitId: Long? = null) {
             ) {
                 val vm: HabitEditorViewModel = hiltViewModel()
                 val draft by vm.draft.collectAsStateWithLifecycle()
+                val categories by vm.categorySuggestions.collectAsStateWithLifecycle()
                 HabitEditScreen(
                     draft = draft,
                     onChange = vm::update,
                     onTemplate = vm::applyTemplate,
                     onSave = vm::save,
                     onBack = { nav.popBackStack() },
+                    categorySuggestions = categories,
                 )
             }
             composable(

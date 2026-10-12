@@ -13,9 +13,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.KeyboardArrowDown
-import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -47,6 +44,7 @@ import app.rota.domain.model.Period
 import app.rota.notify.ReminderScheduler
 import app.rota.ui.components.ChipRow
 import app.rota.ui.components.ColorPicker
+import app.rota.ui.components.RoutineItemEditor
 import app.rota.ui.components.SectionLabel
 import app.rota.ui.components.Stepper
 import app.rota.ui.components.WeekdayPicker
@@ -65,6 +63,7 @@ fun HabitEditScreen(
     onTemplate: (List<String>) -> Unit,
     onSave: suspend () -> Boolean,
     onBack: () -> Unit,
+    categorySuggestions: List<String> = emptyList(),
 ) {
     val scope = rememberCoroutineScope()
     var showTime by remember { mutableStateOf(false) }
@@ -115,6 +114,25 @@ fun HabitEditScreen(
                 label = { Text("Note") },
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
             )
+            OutlinedTextField(
+                value = draft.category,
+                onValueChange = { value -> onChange { it.copy(category = value) } },
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                label = { Text("Category") },
+                singleLine = true,
+                placeholder = { Text("Health, Home, Training") },
+                supportingText = { Text("Groups this habit on the Review screen") },
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
+            )
+            if (categorySuggestions.isNotEmpty()) {
+                ChipRow(
+                    options = categorySuggestions.map { suggestion ->
+                        suggestion to draft.category.trim().equals(suggestion, ignoreCase = true)
+                    },
+                    onSelect = { index -> onChange { it.copy(category = categorySuggestions[index]) } },
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
 
             SectionLabel("Type")
             ChipRow(
@@ -180,7 +198,7 @@ fun HabitEditScreen(
 
             SectionLabel("Rotating routine")
             Text(
-                "The current item advances when you complete the habit.",
+                "Add, update, or delete items. The current item advances when you complete the habit. The same list is editable in Settings.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -190,51 +208,30 @@ fun HabitEditScreen(
                     OutlinedButton(onClick = { onTemplate(titles) }) { Text(label) }
                 }
             }
-            draft.routine.forEachIndexed { index, title ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(
-                        value = title,
-                        onValueChange = { value ->
-                            onChange { d -> d.copy(routine = d.routine.toMutableList().also { it[index] = value }) }
-                        },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                    )
-                    IconButton(
-                        onClick = {
-                            if (index > 0) {
-                                onChange { d ->
-                                    d.copy(routine = d.routine.toMutableList().also {
-                                        val swap = it[index - 1]
-                                        it[index - 1] = it[index]
-                                        it[index] = swap
-                                    })
-                                }
-                            }
-                        },
-                    ) { Icon(Icons.Outlined.KeyboardArrowUp, contentDescription = "Move up") }
-                    IconButton(
-                        onClick = {
-                            if (index < draft.routine.lastIndex) {
-                                onChange { d ->
-                                    d.copy(routine = d.routine.toMutableList().also {
-                                        val swap = it[index + 1]
-                                        it[index + 1] = it[index]
-                                        it[index] = swap
-                                    })
-                                }
-                            }
-                        },
-                    ) { Icon(Icons.Outlined.KeyboardArrowDown, contentDescription = "Move down") }
-                    IconButton(onClick = {
-                        onChange { d -> d.copy(routine = d.routine.toMutableList().also { it.removeAt(index) }) }
-                    }) { Icon(Icons.Outlined.Delete, contentDescription = "Remove") }
-                }
-            }
-            OutlinedButton(
-                onClick = { onChange { it.copy(routine = it.routine + "") } },
-                modifier = Modifier.padding(top = 8.dp),
-            ) { Text("Add item") }
+            Spacer(Modifier.height(8.dp))
+            RoutineItemEditor(
+                items = draft.routine,
+                onAdd = { title -> onChange { it.copy(routine = it.routine + title) } },
+                onRename = { index, title ->
+                    onChange { draftState ->
+                        draftState.copy(routine = draftState.routine.toMutableList().also { it[index] = title })
+                    }
+                },
+                onDelete = { index ->
+                    onChange { draftState ->
+                        draftState.copy(routine = draftState.routine.toMutableList().also { it.removeAt(index) })
+                    }
+                },
+                onMove = { from, to ->
+                    onChange { draftState ->
+                        val next = draftState.routine.toMutableList()
+                        if (from in next.indices && to in next.indices) {
+                            next.add(to, next.removeAt(from))
+                        }
+                        draftState.copy(routine = next)
+                    }
+                },
+            )
 
             SectionLabel("Reminder")
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {

@@ -10,7 +10,7 @@ import androidx.room.RoomDatabase
         CheckInEntity::class,
         SnoozeEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 abstract class RotaDatabase : RoomDatabase() {

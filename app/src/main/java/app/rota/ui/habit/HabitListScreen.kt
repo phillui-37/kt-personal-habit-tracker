@@ -68,6 +68,10 @@ fun HabitListScreen(
                             Text(bundle.habit.name, style = MaterialTheme.typography.titleMedium)
                             Text(
                                 buildString {
+                                    bundle.habit.category.trim().takeIf { it.isNotEmpty() }?.let {
+                                        append(it)
+                                        append(" · ")
+                                    }
                                     append(periodLabel(bundle.habit.period))
                                     bundle.currentRoutine?.let { append(" · "); append(it.title) }
                                     if (bundle.habit.archived) append(" · archived")

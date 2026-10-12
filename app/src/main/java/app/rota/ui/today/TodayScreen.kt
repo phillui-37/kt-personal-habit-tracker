@@ -1,6 +1,8 @@
 package app.rota.ui.today
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +26,8 @@ import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
@@ -49,6 +53,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -214,6 +221,7 @@ private fun TodayRow(
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (muted) 0.45f else 1f),
             )
             val subtitle = buildList {
+                item.habit.category.trim().takeIf { it.isNotEmpty() }?.let { add(it) }
                 item.routineCaption?.let { add(it) }
                 add(periodLabel(item.habit.period))
                 if (item.periodTarget > 1) add("${item.periodDone}/${item.periodTarget}")
@@ -314,7 +322,7 @@ fun NoteSheet(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SnoozeSheet(
     name: String,
@@ -327,15 +335,39 @@ fun SnoozeSheet(
         Column(Modifier.padding(horizontal = 24.dp, vertical = 8.dp)) {
             Text("Snooze $name", style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SnoozeChoice.entries.forEach {
-                    AssistChip(
-                        onClick = { choice = it },
-                        label = { Text(it.label) },
-                        modifier = if (choice == it) Modifier else Modifier,
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                SnoozeChoice.entries.forEach { option ->
+                    val selected = choice == option
+                    FilterChip(
+                        selected = selected,
+                        onClick = { choice = option },
+                        label = { Text(option.label) },
+                        leadingIcon = if (selected) {
+                            {
+                                Icon(
+                                    Icons.Outlined.Check,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(FilterChipDefaults.IconSize),
+                                )
+                            }
+                        } else {
+                            null
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
+                        ),
                     )
                 }
             }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "${choice.label} selected",
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Medium,
+            )
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(
                 value = reason,
@@ -347,7 +379,7 @@ fun SnoozeSheet(
             OutlinedButton(
                 onClick = { onConfirm(choice, reason) },
                 modifier = Modifier.fillMaxWidth(),
-            ) { Text("Snooze") }
+            ) { Text("Snooze · ${choice.label}") }
             Spacer(Modifier.height(28.dp))
         }
     }

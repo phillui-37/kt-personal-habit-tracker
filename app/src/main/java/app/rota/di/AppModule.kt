@@ -2,6 +2,7 @@ package app.rota.di
 
 import android.content.Context
 import androidx.room.Room
+import app.rota.data.local.MIGRATION_1_2
 import app.rota.data.local.RotaDatabase
 import dagger.Module
 import dagger.Provides
@@ -19,6 +20,7 @@ object AppModule {
     fun database(@ApplicationContext context: Context): RotaDatabase =
         Room.databaseBuilder(context, RotaDatabase::class.java, "rota.db")
             .enableMultiInstanceInvalidation()
+            .addMigrations(MIGRATION_1_2)
             .fallbackToDestructiveMigration()
             .build()
 

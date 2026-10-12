@@ -69,6 +69,7 @@ class HabitRepository @Inject constructor(
             val entity = HabitEntity.from(
                 habit.copy(
                     createdAtEpochDay = created,
+                    category = habit.category.trim(),
                     target = when (habit.type) {
                         HabitType.CHECK -> 1
                         else -> habit.target.coerceAtLeast(1)
@@ -177,6 +178,7 @@ class HabitRepository @Inject constructor(
                     id = h.id,
                     name = h.name,
                     note = h.note,
+                    category = h.category,
                     type = h.type,
                     target = h.target,
                     period = h.period,
@@ -232,6 +234,7 @@ class HabitRepository @Inject constructor(
                         id = habit.id,
                         name = habit.name,
                         note = habit.note,
+                        category = habit.category,
                         type = habit.type,
                         target = habit.target,
                         period = habit.period,

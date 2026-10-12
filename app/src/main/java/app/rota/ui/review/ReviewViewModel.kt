@@ -23,6 +23,7 @@ data class ReviewFilter(
     val status: ReviewStatusFilter = ReviewStatusFilter.ALL,
     val period: Period? = null,
     val habitId: Long? = null,
+    val category: String? = null,
     val customStart: LocalDate = LocalDate.now().minusDays(29),
     val customEnd: LocalDate = LocalDate.now(),
 )
@@ -49,11 +50,17 @@ class ReviewViewModel @Inject constructor(
             statusFilter = current.status,
             periodFilter = current.period,
             habitId = current.habitId,
+            categoryFilter = current.category,
         )
         ReviewUiState(
             filter = current,
             summary = summary,
             habitNames = bundles.map { it.habit.id to it.habit.name },
+            categories = bundles
+                .map { it.habit.category.trim() }
+                .filter { it.isNotEmpty() }
+                .distinctBy { it.lowercase() }
+                .sortedBy { it.lowercase() },
             range = range,
         )
     }.stateIn(
@@ -69,6 +76,7 @@ class ReviewViewModel @Inject constructor(
     fun setStatus(status: ReviewStatusFilter) = filter.update { it.copy(status = status) }
     fun setPeriod(period: Period?) = filter.update { it.copy(period = period) }
     fun setHabit(id: Long?) = filter.update { it.copy(habitId = id) }
+    fun setCategory(category: String?) = filter.update { it.copy(category = category) }
 }
 
 data class ReviewUiState(
@@ -83,5 +91,6 @@ data class ReviewUiState(
         events = emptyList(),
     ),
     val habitNames: List<Pair<Long, String>> = emptyList(),
+    val categories: List<String> = emptyList(),
     val range: DateRange = DateRange(LocalDate.now(), LocalDate.now()),
 )

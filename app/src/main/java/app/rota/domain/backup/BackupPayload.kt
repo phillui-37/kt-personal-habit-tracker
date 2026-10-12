@@ -17,6 +17,7 @@ data class HabitBackup(
     val id: Long,
     val name: String,
     val note: String = "",
+    val category: String = "",
     val type: String,
     val target: Int = 1,
     val period: String,

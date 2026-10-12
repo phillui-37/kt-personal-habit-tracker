@@ -86,11 +86,25 @@ fun HabitDetailScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp),
         ) {
+            if (habit.category.isNotBlank()) {
+                Text(
+                    habit.category.trim(),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             bundle.currentRoutine?.let {
                 Text(
                     "Today: ${it.title}",
                     style = MaterialTheme.typography.titleMedium,
                     color = habitColor(habit.colorIndex),
+                )
+            }
+            if (bundle.routine.isNotEmpty()) {
+                Text(
+                    bundle.routine.joinToString(" → ") { it.title },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             Text(
