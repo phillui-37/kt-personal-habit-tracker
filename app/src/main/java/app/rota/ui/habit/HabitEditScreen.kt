@@ -1,6 +1,5 @@
 package app.rota.ui.habit
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,7 +16,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -38,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import app.rota.data.prefs.RoutineTemplate
 import app.rota.ui.theme.RotaTheme
 import app.rota.domain.model.HabitType
 import app.rota.domain.model.Period
@@ -50,11 +49,6 @@ import app.rota.ui.components.Stepper
 import app.rota.ui.components.WeekdayPicker
 import kotlinx.coroutines.launch
 
-private val templates = listOf(
-    "Strength 3-day" to listOf("Core", "Legs", "Back"),
-    "Push / Pull / Legs" to listOf("Push", "Pull", "Legs"),
-)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HabitEditScreen(
@@ -64,6 +58,7 @@ fun HabitEditScreen(
     onSave: suspend () -> Boolean,
     onBack: () -> Unit,
     categorySuggestions: List<String> = emptyList(),
+    templates: List<RoutineTemplate> = emptyList(),
 ) {
     val scope = rememberCoroutineScope()
     var showTime by remember { mutableStateOf(false) }
@@ -198,15 +193,26 @@ fun HabitEditScreen(
 
             SectionLabel("Rotating routine")
             Text(
-                "Add, update, or delete items. The current item advances when you complete the habit. The same list is editable in Settings.",
+                "Add items below, or apply a preset from Settings. The current item advances when you complete the habit.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                templates.forEach { (label, titles) ->
-                    OutlinedButton(onClick = { onTemplate(titles) }) { Text(label) }
-                }
+            val usableTemplates = templates.filter { it.items.isNotEmpty() }
+            if (usableTemplates.isEmpty()) {
+                Text(
+                    "No presets yet. Add them in Settings.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            } else {
+                ChipRow(
+                    options = usableTemplates.map { template ->
+                        template.name to (draft.routine == template.items)
+                    },
+                    onSelect = { index -> onTemplate(usableTemplates[index].items) },
+                    modifier = Modifier.padding(top = 8.dp),
+                )
             }
             Spacer(Modifier.height(8.dp))
             RoutineItemEditor(

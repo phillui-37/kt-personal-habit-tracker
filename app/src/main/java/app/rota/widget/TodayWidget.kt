@@ -1,6 +1,7 @@
 package app.rota.widget
 
 import android.content.Context
+import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -8,15 +9,13 @@ import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
+import androidx.glance.LocalContext
 import androidx.glance.LocalSize
-import androidx.glance.action.ActionParameters
-import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
-import androidx.glance.appwidget.action.ActionCallback
-import androidx.glance.appwidget.action.actionRunCallback
+import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
@@ -31,12 +30,12 @@ import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
+import app.rota.MainActivity
 import app.rota.di.rota
 import app.rota.domain.model.TodayItem
 import app.rota.domain.model.TodayStatus
+import app.rota.notify.ReminderScheduler
 import kotlinx.coroutines.flow.first
-
-private val HABIT_ID = ActionParameters.Key<Long>("habit_id")
 
 class TodayWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Responsive(
@@ -56,12 +55,14 @@ class TodayWidget : GlanceAppWidget() {
 
 @Composable
 private fun WidgetContent(items: List<TodayItem>) {
+    val context = LocalContext.current
     val size = LocalSize.current
     val compact = size.height < 80.dp
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
             .background(GlanceTheme.colors.background)
+            .clickable(actionStartActivity(appIntent(context, null)))
             .padding(12.dp),
     ) {
         Text(
@@ -78,6 +79,7 @@ private fun WidgetContent(items: List<TodayItem>) {
                 Spacer(GlanceModifier.height(4.dp))
                 Text(
                     text = listOfNotNull(next.habit.name, next.routineLabel).joinToString(" · "),
+                    modifier = GlanceModifier.clickable(actionStartActivity(appIntent(context, next.habit.id))),
                     style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 12.sp),
                     maxLines = 1,
                 )
@@ -89,11 +91,7 @@ private fun WidgetContent(items: List<TodayItem>) {
                     modifier = GlanceModifier
                         .fillMaxWidth()
                         .padding(vertical = 4.dp)
-                        .clickable(
-                            actionRunCallback<CompleteHabitAction>(
-                                actionParametersOf(HABIT_ID to item.habit.id),
-                            ),
-                        ),
+                        .clickable(actionStartActivity(appIntent(context, item.habit.id))),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
@@ -121,17 +119,13 @@ private fun WidgetContent(items: List<TodayItem>) {
     }
 }
 
-class CompleteHabitAction : ActionCallback {
-    override suspend fun onAction(
-        context: Context,
-        glanceId: GlanceId,
-        parameters: ActionParameters,
-    ) {
-        val habitId = parameters[HABIT_ID] ?: return
-        context.rota().habitRepository().toggleCheck(habitId)
-        TodayWidget().update(context, glanceId)
+private fun appIntent(context: Context, habitId: Long?): Intent =
+    Intent(context, MainActivity::class.java).apply {
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        if (habitId != null && habitId > 0) {
+            putExtra(ReminderScheduler.EXTRA_HABIT_ID, habitId)
+        }
     }
-}
 
 class TodayWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = TodayWidget()

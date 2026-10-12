@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.rota.domain.model.HabitBundle
+import app.rota.ui.components.CategoryFilterBar
 import app.rota.ui.components.EmptyState
 import app.rota.ui.components.periodLabel
 
@@ -30,7 +32,11 @@ fun HabitListScreen(
     bundles: List<HabitBundle>,
     onOpen: (Long) -> Unit,
     onAdd: () -> Unit,
-    onSettings: () -> Unit,
+    hasAny: Boolean = bundles.isNotEmpty(),
+    categories: List<String> = emptyList(),
+    includeUncategorized: Boolean = false,
+    category: String? = null,
+    onCategory: (String?) -> Unit = {},
 ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -38,47 +44,63 @@ fun HabitListScreen(
             TopAppBar(
                 title = { Text("Habits", fontWeight = FontWeight.Medium) },
                 actions = {
-                    TextButton(onClick = onSettings) { Text("Settings") }
                     TextButton(onClick = onAdd) { Text("Add") }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },
     ) { padding ->
-        if (bundles.isEmpty()) {
-            EmptyState(
-                title = "No habits yet",
-                body = "Start with one daily check, or a rotating weekly strength split.",
-                modifier = Modifier.padding(padding).padding(24.dp),
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+        ) {
+            CategoryFilterBar(
+                categories = categories,
+                includeUncategorized = includeUncategorized,
+                selected = category,
+                onSelect = onCategory,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
             )
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                items(bundles, key = { it.habit.id }) { bundle ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clickable { onOpen(bundle.habit.id) }
-                            .padding(vertical = 14.dp),
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            Text(bundle.habit.name, style = MaterialTheme.typography.titleMedium)
-                            Text(
-                                buildString {
-                                    bundle.habit.category.trim().takeIf { it.isNotEmpty() }?.let {
-                                        append(it)
-                                        append(" · ")
-                                    }
-                                    append(periodLabel(bundle.habit.period))
-                                    bundle.currentRoutine?.let { append(" · "); append(it.title) }
-                                    if (bundle.habit.archived) append(" · archived")
-                                },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+            when {
+                !hasAny -> EmptyState(
+                    title = "No habits yet",
+                    body = "Start with one daily check, or a rotating weekly split.",
+                    modifier = Modifier.padding(24.dp),
+                )
+                bundles.isEmpty() -> EmptyState(
+                    title = "Nothing in this category",
+                    body = "Choose another category, or All.",
+                    modifier = Modifier.padding(24.dp),
+                )
+                else -> LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    items(bundles, key = { it.habit.id }) { bundle ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onOpen(bundle.habit.id) }
+                                .padding(vertical = 14.dp),
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(bundle.habit.name, style = MaterialTheme.typography.titleMedium)
+                                Text(
+                                    buildString {
+                                        bundle.habit.category.trim().takeIf { it.isNotEmpty() }?.let {
+                                            append(it)
+                                            append(" · ")
+                                        }
+                                        append(periodLabel(bundle.habit.period))
+                                        bundle.currentRoutine?.let { append(" · "); append(it.title) }
+                                        if (bundle.habit.archived) append(" · archived")
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
                     }
                 }
