@@ -41,8 +41,8 @@ private data class Tab(val route: String, val label: String, val icon: ImageVect
 
 private val tabs = listOf(
     Tab("today", "Today", Icons.Outlined.CalendarToday),
-    Tab("review", "Review", Icons.Outlined.Insights),
     Tab("habits", "Habits", Icons.AutoMirrored.Outlined.FormatListBulleted),
+    Tab("review", "Review", Icons.Outlined.Insights),
     Tab("settings", "Settings", Icons.Outlined.Settings),
 )
 
