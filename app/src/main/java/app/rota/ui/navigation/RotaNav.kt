@@ -92,6 +92,9 @@ fun RotaNav(openHabitId: Long? = null) {
                     onSnooze = vm::snooze,
                     onWake = vm::wake,
                     onAddHabit = { nav.navigate("edit/0") },
+                    onBatchCheck = vm::checkAll,
+                    onBatchSkip = vm::skipAll,
+                    onBatchSnooze = vm::snoozeAll,
                 )
             }
             composable("review") {
@@ -115,6 +118,8 @@ fun RotaNav(openHabitId: Long? = null) {
                     onOpen = { nav.navigate("habit/$it") },
                     onAdd = { nav.navigate("edit/0") },
                     onSettings = { nav.navigate("settings") },
+                    onDelete = vm::deleteSelected,
+                    onUpdateCategory = vm::updateCategory,
                 )
             }
             composable("settings") {

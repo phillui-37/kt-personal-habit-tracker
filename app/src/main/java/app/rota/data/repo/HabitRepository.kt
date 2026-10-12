@@ -104,6 +104,18 @@ class HabitRepository @Inject constructor(
         habitDao.delete(id)
     }
 
+    suspend fun updateCategory(ids: Collection<Long>, category: String) {
+        val value = category.trim()
+        db.withTransaction {
+            ids.forEach { id ->
+                val current = habitDao.getById(id)?.habit ?: return@forEach
+                if (current.category != value) {
+                    habitDao.update(current.copy(category = value))
+                }
+            }
+        }
+    }
+
     suspend fun logValue(habitId: Long, newValue: Int, date: LocalDate = LocalDate.now()) {
         mutateProgress(habitId, date) { habit, existing, routineId, routineLabel ->
             Progress.setValue(habit, existing, newValue, date.toEpochDay(), routineId, routineLabel)

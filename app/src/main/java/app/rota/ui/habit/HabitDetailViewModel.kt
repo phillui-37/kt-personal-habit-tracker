@@ -46,8 +46,29 @@ class HabitDetailViewModel @Inject constructor(
 
 @HiltViewModel
 class HabitListViewModel @Inject constructor(
-    habits: HabitRepository,
+    private val habits: HabitRepository,
+    private val reminders: ReminderScheduler,
+    private val widgets: WidgetRefresher,
 ) : ViewModel() {
     val bundles = habits.observeBundles(includeArchived = true)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun deleteSelected(ids: Set<Long>) {
+        if (ids.isEmpty()) return
+        viewModelScope.launch {
+            ids.forEach { id ->
+                habits.deleteHabit(id)
+                reminders.cancel(id)
+            }
+            widgets.refresh()
+        }
+    }
+
+    fun updateCategory(ids: Set<Long>, category: String) {
+        if (ids.isEmpty()) return
+        viewModelScope.launch {
+            habits.updateCategory(ids, category)
+            widgets.refresh()
+        }
+    }
 }
