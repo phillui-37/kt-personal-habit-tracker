@@ -2,11 +2,13 @@ package app.rota.ui.settings
 
 import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -79,6 +81,34 @@ fun SettingsScreen(
         confirmFileRestore = uri
     }
     val notifyPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    val needsLocalNetwork = Build.VERSION.SDK_INT >= 37
+    var localNetworkGranted by remember {
+        mutableStateOf(
+            !needsLocalNetwork ||
+                ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_LOCAL_NETWORK) == PackageManager.PERMISSION_GRANTED,
+        )
+    }
+    var afterLocalNetworkGrant by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val localNetworkPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        localNetworkGranted = granted
+        val next = afterLocalNetworkGrant
+        afterLocalNetworkGrant = null
+        if (granted) next?.invoke()
+    }
+    fun requestLocalNetwork() {
+        if (!localNetworkGranted) {
+            localNetworkPermission.launch(Manifest.permission.ACCESS_LOCAL_NETWORK)
+        }
+    }
+
+    fun withLocalNetwork(action: () -> Unit) {
+        if (localNetworkGranted) {
+            action()
+        } else {
+            afterLocalNetworkGrant = action
+            localNetworkPermission.launch(Manifest.permission.ACCESS_LOCAL_NETWORK)
+        }
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -159,6 +189,17 @@ fun SettingsScreen(
             }
 
             SectionLabel("WebDAV")
+            if (needsLocalNetwork) {
+                Text(
+                    "A NAS on your Wi-Fi needs local network access.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(onClick = { requestLocalNetwork() }) {
+                    Text(if (localNetworkGranted) "Local network allowed" else "Allow local network")
+                }
+            }
             OutlinedTextField(
                 value = web.url,
                 onValueChange = { web = web.copy(url = it) },
@@ -198,16 +239,20 @@ fun SettingsScreen(
                     onCheckedChange = {
                         web = web.copy(autoDaily = it)
                         onWebDav(web.copy(autoDaily = it))
+                        if (it) requestLocalNetwork()
                     },
                 )
             }
             TextButton(onClick = { onWebDav(web) }) { Text("Save WebDAV settings") }
-            TextButton(onClick = { onTestWebDav(web) }, enabled = !backupUi.busy) { Text("Test connection") }
+            TextButton(
+                onClick = { withLocalNetwork { onTestWebDav(web) } },
+                enabled = !backupUi.busy,
+            ) { Text("Test connection") }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 OutlinedButton(
                     onClick = {
                         onWebDav(web)
-                        onBackupWebDav()
+                        withLocalNetwork { onBackupWebDav() }
                     },
                     modifier = Modifier.weight(1f),
                     enabled = !backupUi.busy,
@@ -215,7 +260,7 @@ fun SettingsScreen(
                 OutlinedButton(
                     onClick = {
                         onWebDav(web)
-                        confirmWebRestore = true
+                        withLocalNetwork { confirmWebRestore = true }
                     },
                     modifier = Modifier.weight(1f),
                     enabled = !backupUi.busy,

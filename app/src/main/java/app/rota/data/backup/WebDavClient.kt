@@ -88,7 +88,11 @@ class WebDavClient @Inject constructor() {
                 throw WebDavException(response.code, errorMessage(response, "restore"))
             }
             withContext(Dispatchers.IO) {
-                response.body?.bytes() ?: throw WebDavException(response.code, "Empty backup file.")
+                response.body.bytes().also { bytes ->
+                    if (bytes.isEmpty()) {
+                        throw WebDavException(response.code, "Empty backup file.")
+                    }
+                }
             }
         }
     }

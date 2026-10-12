@@ -21,7 +21,7 @@ object AppModule {
         Room.databaseBuilder(context, RotaDatabase::class.java, "rota.db")
             .enableMultiInstanceInvalidation()
             .addMigrations(MIGRATION_1_2)
-            .fallbackToDestructiveMigration()
+            .fallbackToDestructiveMigration(dropAllTables = false)
             .build()
 
     @Provides
