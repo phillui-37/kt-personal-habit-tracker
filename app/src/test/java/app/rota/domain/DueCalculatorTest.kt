@@ -37,6 +37,18 @@ class DueCalculatorTest {
     }
 
     @Test
+    fun weekdayAndWeekendPresets() {
+        val weekdays = habit(weekdaysMask = Habit.WEEKDAYS)
+        val weekend = habit(weekdaysMask = Habit.WEEKEND)
+        DayOfWeek.entries.forEach { day ->
+            val date = monday.plusDays((day.value - DayOfWeek.MONDAY.value).toLong())
+            val isWeekday = day.value <= DayOfWeek.FRIDAY.value
+            assertThat(DueCalculator.isOccurrenceOpen(weekdays, date, emptyList())).isEqualTo(isWeekday)
+            assertThat(DueCalculator.isOccurrenceOpen(weekend, date, emptyList())).isEqualTo(!isWeekday)
+        }
+    }
+
+    @Test
     fun weekdayMaskBlocksOtherDays() {
         val habit = habit(weekdaysMask = Habit.maskOf(listOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY)))
         assertThat(DueCalculator.isOccurrenceOpen(habit, monday, emptyList())).isTrue()

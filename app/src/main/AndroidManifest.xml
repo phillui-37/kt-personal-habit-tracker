@@ -27,6 +27,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:theme="@style/Theme.Rota"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
